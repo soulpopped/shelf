@@ -561,7 +561,7 @@ async function sbFetch(path, options = {}) {
   return text ? JSON.parse(text) : null;
 }
 async function sbLoadMovies() {
-  const rows = await sbFetch('shelf_movies?select=id,data&order=id');
+  const rows = await sbFetch('shelf_movies?select=id,data&order=id&limit=10000');
   return (rows || []).map(r => ({ ...r.data, id: String(r.data.id) }));
 }
 async function sbSaveMovie(movie) {
@@ -575,7 +575,7 @@ async function sbDeleteMovie(id) {
   await sbFetch(`shelf_movies?id=eq.${encodeURIComponent(String(id))}`, { method: 'DELETE' });
 }
 async function sbLoadWatched() {
-  const rows = await sbFetch('shelf_watched?select=movie_id');
+  const rows = await sbFetch('shelf_watched?select=movie_id&limit=10000');
   return new Set((rows || []).map(r => String(r.movie_id)));
 }
 async function sbSetWatched(movieId, watched) {
