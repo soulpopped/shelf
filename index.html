@@ -155,8 +155,11 @@
   .fmt-4k { background: var(--accent); color: #0a0a0a; }
   .fmt-bluray { background: #1a3a6a; color: #7ab0ff; border: 1px solid #2a5090; }
   .fmt-dvd { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+  .fmt-vhs { background: #1a3a1a; color: #6abf6a; border: 1px solid #2a5a2a; }
   .fmt-other { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
   .vhs-note { font-size: 0.62rem; color: var(--text-dim); font-style: italic; }
+  .series-link { background: none; border: none; color: var(--accent); cursor: pointer; font-family: inherit; font-size: inherit; padding: 0; text-decoration: underline; text-decoration-color: rgba(232,197,71,0.4); text-underline-offset: 3px; transition: text-decoration-color 0.15s; }
+  .series-link:hover { text-decoration-color: var(--accent); }
 
   /* MODAL */
   #modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 300; align-items: center; justify-content: center; padding: 24px; backdrop-filter: blur(4px); }
@@ -358,6 +361,7 @@
             <option value="4K UHD">4K UHD</option>
             <option value="Blu-ray">Blu-ray</option>
             <option value="DVD">DVD</option>
+            <option value="VHS">VHS</option>
             <option value="Other">Other</option>
           </select>
         </div>
@@ -366,6 +370,17 @@
           <input type="text" id="fix-boxset-input" placeholder="e.g. Alien Anthology">
         </div>
       </div>
+      <div style="margin-top:10px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+        <div class="add-form-group">
+          <div class="add-form-label">Series position override</div>
+          <input type="number" id="fix-collection-order" min="1" placeholder="e.g. 6" style="width:90px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;border-radius:2px;outline:none">
+        </div>
+        <div class="add-form-group">
+          <div class="add-form-label">Series total override</div>
+          <input type="number" id="fix-collection-total" min="1" placeholder="e.g. 8" style="width:90px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;border-radius:2px;outline:none">
+        </div>
+      </div>
+      <div class="fix-hint" style="margin-top:6px">Series fields only apply to films that belong to a TMDB collection</div>
       <div class="vhs-row" style="margin-top:10px">
         <input type="checkbox" id="fix-vhs-check">
         <label for="fix-vhs-check">📼 Also have on VHS</label>
@@ -452,6 +467,7 @@
               <option value="4K UHD">4K UHD</option>
               <option value="Blu-ray" selected>Blu-ray</option>
               <option value="DVD">DVD</option>
+              <option value="VHS">VHS</option>
               <option value="Other">Other</option>
             </select>
           </div>
@@ -470,6 +486,12 @@
 
   <div id="import-actions">
     <button class="btn btn-accent" id="clz-import-btn" style="width:100%;padding:16px;font-size:0.85rem;letter-spacing:0.15em" onclick="startCLZImport()">Build My Shelf →</button>
+  </div>
+
+  <div id="reset-all-section" style="display:none;margin-top:48px;border-top:1px solid var(--border);padding-top:24px">
+    <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.18em;color:var(--text-dim);margin-bottom:8px">Danger Zone</div>
+    <button class="btn-danger" onclick="resetAllWatched()" style="width:auto;padding:8px 16px;font-size:0.68rem">↺ Reset All Progress to Unwatched</button>
+    <div style="font-size:0.7rem;color:var(--text-dim);font-style:italic;margin-top:7px">Clears every "watched" mark — useful after a shelf audit.</div>
   </div>
 </div>
 
@@ -495,6 +517,7 @@
         <option value="4K UHD">4K UHD</option>
         <option value="Blu-ray">Blu-ray</option>
         <option value="DVD">DVD</option>
+        <option value="VHS">VHS</option>
       </select>
     </div>
     <div class="filter-group">
@@ -932,9 +955,10 @@ async function startCLZImport() {
     for (const [collId, collMovies] of collectionQueue) {
       setProgress(`Fetching series data… (${++ci} / ${collectionQueue.size})`, 85 + (ci / collectionQueue.size) * 10);
       try {
-        const order = await fetchCollectionOrder(collId);
+        const { orders, total } = await fetchCollectionOrder(collId);
         for (const m of collMovies) {
-          m.collectionOrder = order[m.tmdbId] || null;
+          m.collectionOrder = orders[m.tmdbId] || null;
+          m.collectionTotal = total || null;
         }
       } catch(e) { console.warn('Collection fetch failed', collId, e); }
       await sleep(100);
@@ -982,15 +1006,16 @@ async function fetchCollectionOrder(collectionId) {
   const url = `${TMDB_BASE}/collection/${collectionId}?api_key=${apiKey}`;
   const res = await fetch(url);
   const data = await res.json();
-  const order = {};
+  const result = { orders: {}, total: 0 };
   if (data.parts) {
+    result.total = data.parts.length;
     const sorted = [...data.parts].sort((a, b) => {
       if (a.release_date && b.release_date) return a.release_date.localeCompare(b.release_date);
       return (a.id || 0) - (b.id || 0);
     });
-    sorted.forEach((part, idx) => { order[String(part.id)] = idx + 1; });
+    sorted.forEach((part, idx) => { result.orders[String(part.id)] = idx + 1; });
   }
-  return order;
+  return result;
 }
 
 function buildMovieObject(result, detail, searchTitle) {
@@ -1014,7 +1039,8 @@ function buildMovieObject(result, detail, searchTitle) {
     tmdbId: String(result.id),
     collectionId: detail?.belongs_to_collection?.id ? String(detail.belongs_to_collection.id) : null,
     collectionName: detail?.belongs_to_collection?.name || null,
-    collectionOrder: null, // filled after collection fetch
+    collectionOrder: null,  // filled after collection fetch
+    collectionTotal: null,  // filled after collection fetch
     format: 'Blu-ray', // overridden by caller
     hasVHS: false,     // overridden by caller
     boxSet: null,      // overridden by caller
@@ -1127,8 +1153,9 @@ async function addSelectedFilm() {
 
     if (movie.collectionId) {
       setProgress('Fetching series info…', 60);
-      const order = await fetchCollectionOrder(movie.collectionId);
-      movie.collectionOrder = order[movie.tmdbId] || null;
+      const { orders, total } = await fetchCollectionOrder(movie.collectionId);
+      movie.collectionOrder = orders[movie.tmdbId] || null;
+      movie.collectionTotal = total || null;
     }
 
     setProgress('Saving…', 90);
@@ -1167,6 +1194,28 @@ function showImport() {
   if (movies.length > 0) {
     const titleTab = document.querySelector('.import-tab:nth-child(2)');
     switchTab('title', titleTab);
+    // Show the Reset danger zone only when there's a library to reset
+    document.getElementById('reset-all-section').style.display = watchedSet.size > 0 ? 'block' : 'none';
+  }
+}
+
+async function resetAllWatched() {
+  if (!confirm('Reset ALL watched progress to unwatched?\n\nThis will clear every "Seen" mark across your entire collection. This cannot be undone.')) return;
+  if (!confirm('Are you absolutely sure? All watch history will be permanently deleted.')) return;
+  try {
+    // Delete all shelf_watched rows in batches
+    const ids = [...watchedSet];
+    for (const id of ids) {
+      await sbSetWatched(id, false);
+    }
+    watchedSet.clear();
+    updateStats();
+    applyFilters();
+    document.getElementById('reset-all-section').style.display = 'none';
+    alert('Done — all films reset to unwatched.');
+  } catch(e) {
+    alert('Error resetting watched status. Check your connection and try again.');
+    console.error(e);
   }
 }
 
@@ -1311,7 +1360,7 @@ function resetFilters() {
 // ── RENDER ────────────────────────────────────────────────────────────────
 function fmtBadgeHTML(format) {
   if (!format) return '';
-  const cls = format === '4K UHD' ? 'fmt-4k' : format.startsWith('Blu') ? 'fmt-bluray' : format === 'DVD' ? 'fmt-dvd' : 'fmt-other';
+  const cls = format === '4K UHD' ? 'fmt-4k' : format.startsWith('Blu') ? 'fmt-bluray' : format === 'DVD' ? 'fmt-dvd' : format === 'VHS' ? 'fmt-vhs' : 'fmt-other';
   const label = format === '4K UHD' ? '4K' : format === 'Blu-ray' ? 'BD' : format;
   return `<span class="fmt-badge ${cls}">${escHtml(label)}</span>`;
 }
@@ -1374,11 +1423,14 @@ function openModal(movie) {
   // Series context
   let seriesHTML = '';
   if (movie.collectionName && movie.collectionOrder) {
-    // Count total films in collection that we own
+    // Use stored TMDB total if available; fall back to count of owned films in collection
     const collMovies = movies.filter(m => m.collectionId === movie.collectionId);
-    seriesHTML = `<div class="modal-meta-item"><div class="modal-meta-label">Series</div><div class="modal-meta-value" style="color:var(--accent)">Film ${movie.collectionOrder} of ${collMovies.length} · ${escHtml(movie.collectionName)}</div></div>`;
+    const total = movie.collectionTotal || collMovies.length;
+    const collId = escHtml(String(movie.collectionId));
+    seriesHTML = `<div class="modal-meta-item"><div class="modal-meta-label">Series</div><div class="modal-meta-value" style="color:var(--accent)">Film ${movie.collectionOrder} of ${total} · <button class="series-link" onclick="filterToCollection('${collId}')">${escHtml(movie.collectionName)} ↗</button></div></div>`;
   } else if (movie.collectionName) {
-    seriesHTML = `<div class="modal-meta-item"><div class="modal-meta-label">Series</div><div class="modal-meta-value" style="color:var(--accent)">${escHtml(movie.collectionName)}</div></div>`;
+    const collId = escHtml(String(movie.collectionId || ''));
+    seriesHTML = `<div class="modal-meta-item"><div class="modal-meta-label">Series</div><div class="modal-meta-value" style="color:var(--accent)">${collId ? `<button class="series-link" onclick="filterToCollection('${collId}')">${escHtml(movie.collectionName)} ↗</button>` : escHtml(movie.collectionName)}</div></div>`;
   }
 
   // Disc location strip
@@ -1422,7 +1474,12 @@ function openModal(movie) {
   document.getElementById('modal-overlay').classList.add('active');
 }
 
-function closeModal() { document.getElementById('modal-overlay').classList.remove('active'); applyFilters(); }
+function closeModal() { document.getElementById('modal-overlay').classList.remove('active'); }
+function filterToCollection(collectionId) {
+  closeModal();
+  document.getElementById('filter-collection').value = collectionId;
+  applyFilters();
+}
 function handleModalOverlayClick(e) { if (e.target === document.getElementById('modal-overlay')) closeModal(); }
 
 // ── WATCHED ───────────────────────────────────────────────────────────────
@@ -1547,6 +1604,8 @@ function openFixModal(movieId) {
   document.getElementById('fix-tmdbid-input').value = '';
   document.getElementById('fix-format-select').value = movie.format || 'Blu-ray';
   document.getElementById('fix-boxset-input').value = movie.boxSet || '';
+  document.getElementById('fix-collection-order').value = movie.collectionOrder || '';
+  document.getElementById('fix-collection-total').value = movie.collectionTotal || '';
   document.getElementById('fix-vhs-check').checked = movie.hasVHS || false;
   document.getElementById('fix-status').textContent = '';
   document.getElementById('fix-overlay').classList.add('active');
@@ -1582,8 +1641,9 @@ async function fixByTmdbId() {
     const fakeResult = { id: detail.id, title: detail.title, original_title: detail.original_title, release_date: detail.release_date, overview: detail.overview, poster_path: detail.poster_path, vote_average: detail.vote_average, vote_count: detail.vote_count, original_language: detail.original_language };
     const movie = buildMovieObject(fakeResult, detail, detail.title);
     if (movie.collectionId) {
-      const order = await fetchCollectionOrder(movie.collectionId);
-      movie.collectionOrder = order[movie.tmdbId] || null;
+      const { orders, total } = await fetchCollectionOrder(movie.collectionId);
+      movie.collectionOrder = orders[movie.tmdbId] || null;
+      movie.collectionTotal = total || null;
     }
     await applyMovieFix(movie);
   } catch(e) { setFixStatus('Error fetching.', true); }
@@ -1595,6 +1655,10 @@ async function saveDiscInfo() {
   movies[idx].format = document.getElementById('fix-format-select').value;
   movies[idx].boxSet = document.getElementById('fix-boxset-input').value.trim() || null;
   movies[idx].hasVHS = document.getElementById('fix-vhs-check').checked;
+  const orderVal = parseInt(document.getElementById('fix-collection-order').value);
+  const totalVal = parseInt(document.getElementById('fix-collection-total').value);
+  if (!isNaN(orderVal) && orderVal > 0) movies[idx].collectionOrder = orderVal;
+  if (!isNaN(totalVal) && totalVal > 0) movies[idx].collectionTotal = totalVal;
   try {
     await sbSaveMovie(movies[idx]);
     setFixStatus('✓ Disc info saved');
