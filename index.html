@@ -560,9 +560,23 @@ async function sbFetch(path, options = {}) {
   const text = await res.text();
   return text ? JSON.parse(text) : null;
 }
+async function sbLoadAll(path) {
+  let allRows = [];
+  let from = 0;
+  const pageSize = 1000;
+  while (true) {
+    const sep = path.includes('?') ? '&' : '?';
+    const rows = await sbFetch(`${path}${sep}limit=${pageSize}&offset=${from}`);
+    if (!rows || rows.length === 0) break;
+    allRows = allRows.concat(rows);
+    if (rows.length < pageSize) break;
+    from += pageSize;
+  }
+  return allRows;
+}
 async function sbLoadMovies() {
-  const rows = await sbFetch('shelf_movies?select=id,data&order=id&limit=10000');
-  return (rows || []).map(r => ({ ...r.data, id: String(r.data.id) }));
+  const rows = await sbLoadAll('shelf_movies?select=id,data&order=id');
+  return rows.map(r => ({ ...r.data, id: String(r.data.id) }));
 }
 async function sbSaveMovie(movie) {
   await sbFetch('shelf_movies', {
@@ -575,8 +589,8 @@ async function sbDeleteMovie(id) {
   await sbFetch(`shelf_movies?id=eq.${encodeURIComponent(String(id))}`, { method: 'DELETE' });
 }
 async function sbLoadWatched() {
-  const rows = await sbFetch('shelf_watched?select=movie_id&limit=10000');
-  return new Set((rows || []).map(r => String(r.movie_id)));
+  const rows = await sbLoadAll('shelf_watched?select=movie_id&order=movie_id');
+  return new Set(rows.map(r => String(r.movie_id)));
 }
 async function sbSetWatched(movieId, watched) {
   const id = String(movieId);
