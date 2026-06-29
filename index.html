@@ -1,0 +1,1636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHELF — Your Collection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface2: #1a1a1a;
+    --border: #2a2a2a;
+    --accent: #e8c547;
+    --accent2: #c0392b;
+    --text: #f0ede8;
+    --text-muted: #7a7670;
+    --text-dim: #4a4744;
+    --watched-overlay: rgba(232,197,71,0.08);
+    --card-w: 185px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-weight: 300; min-height: 100vh; overflow-x: hidden; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E"); pointer-events: none; z-index: 9999; opacity: 0.4; }
+
+  /* HEADER */
+  header { display: flex; align-items: center; justify-content: space-between; padding: 28px 48px 24px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,10,10,0.96); backdrop-filter: blur(12px); z-index: 100; }
+  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 2.4rem; letter-spacing: 0.12em; color: var(--accent); line-height: 1; }
+  .logo span { color: var(--text-muted); font-size: 0.65rem; font-family: 'DM Sans', sans-serif; font-weight: 400; letter-spacing: 0.2em; text-transform: uppercase; display: block; margin-top: 2px; }
+  .header-stats { display: flex; gap: 32px; align-items: center; }
+  .stat { text-align: center; }
+  .stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; color: var(--accent); line-height: 1; }
+  .stat-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.15em; margin-top: 2px; }
+  .header-actions { display: flex; gap: 12px; align-items: center; }
+
+  /* BUTTONS */
+  .btn { font-family: 'DM Sans', sans-serif; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; border: none; cursor: pointer; padding: 10px 20px; border-radius: 2px; transition: all 0.2s; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+  .btn-ghost:hover { border-color: var(--text-muted); color: var(--text); }
+  .btn-accent { background: var(--accent); color: #0a0a0a; font-weight: 500; }
+  .btn-accent:hover { background: #f0d060; transform: translateY(-1px); }
+  .btn-random { background: var(--accent2); color: white; font-size: 0.8rem; padding: 11px 24px; display: flex; align-items: center; gap: 8px; }
+  .btn-random:hover { background: #e74c3c; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(192,57,43,0.4); }
+  .btn-danger { background: transparent; border: 1px solid var(--accent2); color: var(--accent2); font-family: 'DM Sans', sans-serif; font-size: 0.72rem; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; padding: 9px 16px; border-radius: 2px; cursor: pointer; transition: all 0.2s; width: 100%; }
+  .btn-danger:hover { background: var(--accent2); color: white; }
+
+  /* IMPORT PANEL */
+  #import-panel { max-width: 760px; margin: 64px auto; padding: 0 24px; text-align: center; }
+  .import-headline { font-family: 'Bebas Neue', sans-serif; font-size: 3.5rem; letter-spacing: 0.06em; line-height: 1; color: var(--text); margin-bottom: 8px; }
+  .import-headline em { color: var(--accent); font-style: normal; }
+  .import-sub { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 48px; font-style: italic; }
+  .import-tabs { display: flex; justify-content: center; gap: 0; margin-bottom: 0; border-bottom: 1px solid var(--border); }
+  .import-tab { font-family: 'DM Sans', sans-serif; font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase; background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 12px 24px; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.2s; }
+  .import-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .import-tab:hover:not(.active) { color: var(--text); }
+  .import-content { background: var(--surface); border: 1px solid var(--border); border-top: none; padding: 32px; margin-bottom: 16px; }
+  .import-section { display: none; }
+  .import-section.active { display: block; }
+
+  textarea { width: 100%; min-height: 120px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 16px; padding: 16px; resize: vertical; border-radius: 2px; outline: none; transition: border-color 0.2s; line-height: 1.7; }
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: var(--text-dim); }
+
+  .api-key-row { display: flex; gap: 12px; margin-bottom: 20px; align-items: center; }
+  .api-key-row label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-muted); white-space: nowrap; }
+  input[type="text"], input[type="password"] { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 16px; padding: 10px 14px; border-radius: 2px; outline: none; transition: border-color 0.2s; }
+  input:focus { border-color: var(--accent); }
+
+  .drop-zone { border: 2px dashed var(--border); padding: 48px; text-align: center; cursor: pointer; transition: all 0.2s; border-radius: 2px; }
+  .drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); background: rgba(232,197,71,0.04); }
+  .drop-icon { font-size: 2rem; margin-bottom: 12px; opacity: 0.5; }
+  .drop-label { font-size: 0.8rem; color: var(--text-muted); }
+  .drop-label strong { color: var(--accent); }
+  .import-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 10px; text-align: left; font-style: italic; }
+
+  /* ADD BY TITLE */
+  .search-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .search-row input[type="text"] { flex: 1; }
+  #tmdb-results { display: none; margin-top: 8px; }
+  .tmdb-result { display: flex; gap: 14px; align-items: flex-start; padding: 12px; border: 1px solid var(--border); border-radius: 2px; cursor: pointer; transition: all 0.15s; margin-bottom: 8px; background: var(--surface2); }
+  .tmdb-result:hover { border-color: var(--accent); background: rgba(232,197,71,0.04); }
+  .tmdb-result.selected { border-color: var(--accent); background: rgba(232,197,71,0.08); }
+  .tmdb-result-poster { width: 44px; flex-shrink: 0; border-radius: 2px; background: var(--border); }
+  .tmdb-result-poster img { width: 44px; height: 66px; object-fit: cover; border-radius: 2px; display: block; }
+  .tmdb-result-poster .no-poster { width: 44px; height: 66px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: var(--text-dim); }
+  .tmdb-result-info { flex: 1; }
+  .tmdb-result-title { font-family: 'DM Serif Display', serif; font-size: 0.9rem; color: var(--text); margin-bottom: 4px; }
+  .tmdb-result-meta { font-size: 0.72rem; color: var(--text-muted); }
+
+  #add-film-form { display: none; background: var(--surface2); border: 1px solid var(--border); border-radius: 2px; padding: 20px; margin-top: 12px; }
+  .add-form-title { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.18em; color: var(--text-muted); margin-bottom: 14px; }
+  .add-form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
+  .add-form-group { display: flex; flex-direction: column; gap: 6px; }
+  .add-form-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--text-muted); }
+  select { background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 16px; padding: 8px 32px 8px 12px; border-radius: 2px; outline: none; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%237a7670' stroke-width='1.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; min-width: 140px; transition: border-color 0.2s; }
+  select:hover, select:focus { border-color: var(--text-muted); }
+  .vhs-row { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--text-muted); cursor: pointer; margin-top: 4px; }
+  .vhs-row input[type="checkbox"] { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
+
+  /* PROGRESS */
+  #progress-overlay { display: none; position: fixed; inset: 0; background: rgba(10,10,10,0.92); z-index: 200; align-items: center; justify-content: center; flex-direction: column; gap: 24px; }
+  #progress-overlay.active { display: flex; }
+  .progress-title { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; letter-spacing: 0.1em; color: var(--accent); }
+  .progress-sub { font-size: 0.8rem; color: var(--text-muted); font-style: italic; max-width: 480px; text-align: center; }
+  .progress-bar-wrap { width: 360px; height: 3px; background: var(--border); }
+  .progress-bar-fill { height: 100%; background: var(--accent); transition: width 0.3s; width: 0%; }
+
+  /* MAIN APP */
+  #app { display: none; }
+  #app.active { display: block; }
+
+  /* FILTER BAR */
+  #filter-bar { padding: 20px 48px; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; background: var(--surface); }
+  .filter-group { display: flex; flex-direction: column; gap: 6px; }
+  .filter-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.18em; color: var(--text-muted); }
+  .filter-search { flex: 1; min-width: 220px; max-width: 320px; }
+  .filter-search input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-size: 16px; padding: 8px 12px; border-radius: 2px; }
+  .filter-toggles { display: flex; gap: 8px; align-items: flex-end; }
+  .toggle-btn { font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; background: var(--bg); border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; padding: 8px 14px; border-radius: 2px; transition: all 0.15s; font-family: 'DM Sans', sans-serif; font-weight: 400; }
+  .toggle-btn.active { background: var(--accent); color: #0a0a0a; border-color: var(--accent); font-weight: 500; }
+  .toggle-btn:not(.active):hover { border-color: var(--text-muted); color: var(--text); }
+  .filter-results { padding: 12px 48px; font-size: 0.75rem; color: var(--text-muted); font-style: italic; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .sort-bar { display: flex; align-items: center; gap: 8px; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; }
+  .sort-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.7rem; font-family: 'DM Sans', sans-serif; text-transform: uppercase; letter-spacing: 0.12em; padding: 4px 8px; border-radius: 2px; transition: all 0.15s; }
+  .sort-btn:hover { color: var(--text); background: var(--surface); }
+  .sort-btn.active { color: var(--accent); }
+
+  /* GRID */
+  #grid { padding: 32px 48px; display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--card-w), 1fr)); gap: 20px; }
+
+  /* CARDS */
+  .card { position: relative; cursor: pointer; border-radius: 3px; overflow: hidden; background: var(--surface); border: 1px solid var(--border); transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s; animation: cardIn 0.35s ease both; }
+  .card:hover { transform: translateY(-4px) scale(1.015); box-shadow: 0 12px 40px rgba(0,0,0,0.6); border-color: var(--text-dim); z-index: 2; }
+  .card.watched { opacity: 0.55; }
+  .card.watched::after { content: ''; position: absolute; inset: 0; background: var(--watched-overlay); pointer-events: none; }
+  @keyframes cardIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .card-poster { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; background: var(--surface2); }
+  .card-poster-placeholder { width: 100%; aspect-ratio: 2/3; background: var(--surface2); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; color: var(--text-dim); }
+  .card-poster-placeholder .film-icon { font-size: 2rem; opacity: 0.3; }
+  .card-poster-placeholder .placeholder-title { font-size: 0.7rem; text-align: center; padding: 0 12px; color: var(--text-muted); font-style: italic; }
+  .card-info { padding: 12px; }
+  .card-title { font-family: 'DM Serif Display', serif; font-size: 0.85rem; line-height: 1.3; margin-bottom: 4px; color: var(--text); }
+  .card-meta { font-size: 0.7rem; color: var(--text-muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .card-rating { color: var(--accent); font-weight: 500; }
+  .card-genre { background: var(--surface2); padding: 2px 6px; border-radius: 2px; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
+  .card-watched-badge { position: absolute; top: 10px; right: 10px; background: var(--accent); color: #0a0a0a; font-size: 0.6rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 7px; border-radius: 2px; font-family: 'DM Sans', sans-serif; display: none; }
+  .card.watched .card-watched-badge { display: block; }
+  .card-edit-btn { position: absolute; bottom: 52px; right: 8px; background: rgba(10,10,10,0.85); border: 1px solid var(--border); color: var(--text-dim); font-size: 0.6rem; font-family: 'DM Sans', sans-serif; text-transform: uppercase; letter-spacing: 0.1em; padding: 4px 7px; border-radius: 2px; cursor: pointer; opacity: 0; transition: opacity 0.15s, color 0.15s, border-color 0.15s; z-index: 3; }
+  .card:hover .card-edit-btn { opacity: 1; }
+  .card-edit-btn:hover { color: var(--accent); border-color: var(--accent); background: rgba(10,10,10,0.95); }
+
+  /* FORMAT BADGES */
+  .fmt-badge { display: inline-block; font-size: 0.58rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 5px; border-radius: 2px; vertical-align: middle; }
+  .fmt-4k { background: var(--accent); color: #0a0a0a; }
+  .fmt-bluray { background: #1a3a6a; color: #7ab0ff; border: 1px solid #2a5090; }
+  .fmt-dvd { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+  .fmt-other { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
+  .vhs-note { font-size: 0.62rem; color: var(--text-dim); font-style: italic; }
+
+  /* MODAL */
+  #modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 300; align-items: center; justify-content: center; padding: 24px; backdrop-filter: blur(4px); }
+  #modal-overlay.active { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); max-width: 760px; width: 100%; max-height: 90vh; overflow-y: auto; border-radius: 3px; animation: modalIn 0.25s ease; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+  @keyframes modalIn { from { opacity: 0; transform: scale(0.96) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+  .modal-hero { position: relative; display: flex; gap: 0; }
+  .modal-poster { width: 220px; flex-shrink: 0; object-fit: cover; aspect-ratio: 2/3; }
+  .modal-poster-placeholder { width: 220px; flex-shrink: 0; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 3rem; color: var(--text-dim); aspect-ratio: 2/3; }
+  .modal-hero-info { flex: 1; padding: 32px 32px 32px 28px; display: flex; flex-direction: column; justify-content: space-between; }
+  .modal-close { position: absolute; top: 16px; right: 16px; background: rgba(0,0,0,0.6); border: 1px solid var(--border); color: var(--text-muted); font-size: 1rem; cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 2px; transition: all 0.2s; z-index: 1; line-height: 1; font-family: monospace; }
+  .modal-close:hover { color: var(--text); border-color: var(--text-muted); }
+  .modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 2.2rem; letter-spacing: 0.05em; line-height: 1; color: var(--text); margin-bottom: 6px; }
+  .modal-original-title { font-family: 'DM Serif Display', serif; font-style: italic; font-size: 0.9rem; color: var(--text-muted); margin-bottom: 12px; }
+  .modal-badges { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  .modal-meta-row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; }
+  .modal-meta-item { display: flex; flex-direction: column; gap: 2px; }
+  .modal-meta-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--text-dim); }
+  .modal-meta-value { font-size: 0.85rem; color: var(--text); }
+  .modal-rating-big { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; color: var(--accent); line-height: 1; }
+  .modal-genres { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
+  .genre-pill { background: var(--surface2); border: 1px solid var(--border); padding: 4px 10px; border-radius: 2px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
+  .modal-overview { font-size: 0.85rem; color: var(--text-muted); line-height: 1.7; font-style: italic; }
+  .modal-actions { display: flex; gap: 10px; padding: 20px 32px; border-top: 1px solid var(--border); background: var(--surface2); flex-wrap: wrap; }
+  .btn-watch-toggle { flex: 1; padding: 12px; font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: all 0.2s; border-radius: 2px; }
+  .btn-watch-toggle:hover, .btn-watch-toggle.watched { background: var(--accent); color: #0a0a0a; }
+  .btn-tmdb-link { padding: 12px 20px; font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; border-radius: 2px; text-decoration: none; display: flex; align-items: center; }
+  .btn-tmdb-link:hover { border-color: var(--text-muted); color: var(--text); }
+
+  /* DISC LOCATION / COLLECTION STRIP */
+  .modal-disc-strip { padding: 14px 32px; background: rgba(232,197,71,0.05); border-top: 1px solid var(--border); font-size: 0.78rem; display: flex; flex-direction: column; gap: 8px; }
+  .disc-item { display: flex; align-items: baseline; gap: 8px; }
+  .disc-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.18em; color: var(--text-dim); white-space: nowrap; }
+  .disc-value { color: var(--text-muted); }
+  .disc-value strong { color: var(--accent); font-weight: 500; }
+  .disc-value em { color: var(--text-muted); font-style: italic; }
+
+  /* RANDOM MODAL */
+  #random-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 400; align-items: center; justify-content: center; backdrop-filter: blur(6px); }
+  #random-overlay.active { display: flex; }
+  .random-modal { text-align: center; max-width: 420px; padding: 48px 32px; background: var(--surface); border: 1px solid var(--border); border-radius: 3px; animation: modalIn 0.3s ease; }
+  .random-eyebrow { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.25em; color: var(--accent); margin-bottom: 24px; }
+  .random-series-tag { font-size: 0.7rem; color: var(--text-muted); letter-spacing: 0.08em; margin-bottom: 12px; font-style: italic; }
+  .random-series-tag strong { color: var(--accent); font-style: normal; }
+  .random-poster { width: 140px; margin: 0 auto 24px; border-radius: 2px; display: block; box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
+  .random-poster-ph { width: 140px; height: 210px; background: var(--surface2); margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: var(--text-dim); border-radius: 2px; }
+  .random-title { font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem; letter-spacing: 0.05em; line-height: 1; margin-bottom: 8px; }
+  .random-meta { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px; font-style: italic; }
+  .random-disc { font-size: 0.72rem; color: var(--text-dim); margin-bottom: 28px; }
+  .random-disc strong { color: var(--text-muted); }
+  .random-actions { display: flex; gap: 10px; justify-content: center; }
+
+  /* FIX MODAL */
+  #fix-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 500; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+  #fix-overlay.active { display: flex; }
+  .fix-modal { background: var(--surface); border: 1px solid var(--border); width: 100%; max-width: 500px; border-radius: 3px; animation: modalIn 0.2s ease; padding: 32px; max-height: 90vh; overflow-y: auto; }
+  .fix-modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; letter-spacing: 0.08em; margin-bottom: 4px; color: var(--text); }
+  .fix-modal-sub { font-size: 0.75rem; color: var(--text-muted); font-style: italic; margin-bottom: 28px; }
+  .fix-modal-sub strong { color: var(--accent); font-style: normal; font-weight: 500; }
+  .fix-section { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+  .fix-section:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .fix-section-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.18em; color: var(--text-muted); margin-bottom: 10px; }
+  .fix-row { display: flex; gap: 8px; }
+  .fix-row input { flex: 1; }
+  .fix-hint { font-size: 0.7rem; color: var(--text-dim); margin-top: 7px; font-style: italic; }
+  .fix-hint a { color: var(--text-muted); }
+  .fix-close-row { display: flex; justify-content: flex-end; margin-top: 24px; }
+  .fix-spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .fix-disc-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .fix-disc-row .add-form-group { flex: 1; min-width: 140px; }
+  .fix-disc-row input[type="text"] { width: 100%; }
+
+  /* PASSWORD GATE */
+  #pw-overlay { display: flex; position: fixed; inset: 0; background: var(--bg); z-index: 1000; align-items: center; justify-content: center; flex-direction: column; }
+  #pw-overlay.unlocked { display: none; }
+  .pw-box { text-align: center; padding: 48px 40px; background: var(--surface); border: 1px solid var(--border); border-radius: 3px; width: 100%; max-width: 360px; margin: 0 16px; animation: modalIn 0.3s ease; }
+  .pw-logo { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; letter-spacing: 0.12em; color: var(--accent); line-height: 1; margin-bottom: 4px; }
+  .pw-sub { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.18em; margin-bottom: 36px; }
+  .pw-input-wrap { position: relative; margin-bottom: 12px; }
+  .pw-input-wrap input { width: 100%; text-align: center; font-size: 1rem; letter-spacing: 0.2em; padding: 12px 16px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 2px; outline: none; transition: border-color 0.2s; }
+  .pw-input-wrap input:focus { border-color: var(--accent); }
+  .pw-input-wrap input.error { border-color: var(--accent2); animation: shake 0.3s ease; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+  .pw-error { font-size: 0.72rem; color: var(--accent2); min-height: 18px; margin-bottom: 12px; font-style: italic; }
+  .pw-btn { width: 100%; padding: 13px; background: var(--accent); color: #0a0a0a; border: none; font-family: 'DM Sans', sans-serif; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; border-radius: 2px; transition: background 0.2s; }
+  .pw-btn:hover { background: #f0d060; }
+
+  /* EMPTY STATE */
+  .empty-state { text-align: center; padding: 80px 24px; color: var(--text-muted); grid-column: 1/-1; }
+  .empty-state-icon { font-size: 3rem; opacity: 0.2; margin-bottom: 16px; }
+  .empty-state-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; letter-spacing: 0.1em; margin-bottom: 8px; color: var(--text-dim); }
+  .empty-state-sub { font-size: 0.85rem; font-style: italic; }
+
+  /* RUNTIME RANGE */
+  .range-wrap { display: flex; flex-direction: column; gap: 6px; }
+  .range-row { display: flex; align-items: center; gap: 8px; }
+  input[type="range"] { -webkit-appearance: none; width: 120px; height: 3px; background: var(--border); border-radius: 2px; outline: none; cursor: pointer; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); cursor: pointer; }
+  .range-val { font-size: 0.72rem; color: var(--text-muted); min-width: 52px; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+  /* MOBILE */
+  @media (max-width: 768px) {
+    header { padding: 12px 16px; flex-wrap: wrap; gap: 10px; }
+    .header-stats { gap: 16px; order: 3; width: 100%; justify-content: center; padding-top: 6px; border-top: 1px solid var(--border); }
+    .header-actions { gap: 6px; flex-wrap: wrap; }
+    .logo { font-size: 1.8rem; }
+    #filter-bar { padding: 12px 16px; gap: 10px; }
+    #filter-bar .filter-group { min-width: calc(50% - 5px); }
+    #filter-bar .filter-search { min-width: 100%; max-width: 100%; }
+    select { min-width: unset; width: 100%; }
+    .filter-results { padding: 10px 16px; flex-direction: column; align-items: flex-start; gap: 8px; }
+    #grid { padding: 16px; gap: 12px; --card-w: 140px; }
+    .modal-hero { flex-direction: column; }
+    .modal-poster { width: 100%; aspect-ratio: 16/9; object-fit: cover; }
+    .modal-poster-placeholder { width: 100%; aspect-ratio: 16/9; }
+    .modal-hero-info { padding: 20px; }
+    .modal-actions { padding: 16px; }
+    .random-modal { padding: 32px 20px; margin: 0 16px; }
+    .fix-modal { margin: 0 16px; padding: 24px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- PASSWORD GATE -->
+<div id="pw-overlay">
+  <div class="pw-box">
+    <div class="pw-logo">Shelf</div>
+    <div class="pw-sub">Your Collection</div>
+    <div class="pw-input-wrap">
+      <input type="password" id="pw-input" placeholder="Password" onkeydown="if(event.key==='Enter')checkPassword()">
+    </div>
+    <div class="pw-error" id="pw-error"></div>
+    <button class="pw-btn" onclick="checkPassword()">Unlock →</button>
+  </div>
+</div>
+
+<!-- PROGRESS OVERLAY -->
+<div id="progress-overlay">
+  <div class="progress-title" id="progress-title">BUILDING YOUR SHELF</div>
+  <div id="progress-sub" class="progress-sub">Starting up…</div>
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-fill"></div></div>
+</div>
+
+<!-- RANDOM PICK OVERLAY -->
+<div id="random-overlay">
+  <div class="random-modal">
+    <div class="random-eyebrow">✦ Tonight's Pick ✦</div>
+    <div class="random-series-tag" id="random-series-tag" style="display:none"></div>
+    <div id="random-poster-wrap"></div>
+    <div class="random-title" id="random-title"></div>
+    <div class="random-meta" id="random-meta"></div>
+    <div class="random-disc" id="random-disc" style="display:none"></div>
+    <div class="random-actions">
+      <button class="btn btn-ghost" onclick="closeRandom()">Maybe later</button>
+      <button class="btn btn-random" onclick="rollAgain()">⚄ Roll again</button>
+      <button class="btn btn-accent" onclick="watchRandomNow()">Mark watched</button>
+    </div>
+  </div>
+</div>
+
+<!-- FIX MOVIE MODAL -->
+<div id="fix-overlay" onclick="handleFixOverlayClick(event)">
+  <div class="fix-modal">
+    <div class="fix-modal-title">Fix This Film</div>
+    <div class="fix-modal-sub">Having trouble with <strong id="fix-movie-name"></strong>?</div>
+
+    <div class="fix-section">
+      <div class="fix-section-label">Re-search by title</div>
+      <div class="fix-row">
+        <input type="text" id="fix-title-input" placeholder="e.g. Solaris 1972">
+        <button class="btn btn-accent" style="white-space:nowrap;padding:9px 16px" onclick="fixByTitle()">Search</button>
+      </div>
+      <div class="fix-hint">Try adding a year, or the original-language title</div>
+    </div>
+
+    <div class="fix-section">
+      <div class="fix-section-label">Look up by TMDB ID</div>
+      <div class="fix-row">
+        <input type="text" id="fix-tmdbid-input" placeholder="e.g. 637">
+        <button class="btn btn-accent" style="white-space:nowrap;padding:9px 16px" onclick="fixByTmdbId()">Fetch</button>
+      </div>
+      <div class="fix-hint">Find the ID at <a href="https://www.themoviedb.org" target="_blank">themoviedb.org</a></div>
+    </div>
+
+    <div class="fix-section">
+      <div class="fix-section-label">Edit disc info</div>
+      <div class="fix-disc-row">
+        <div class="add-form-group">
+          <div class="add-form-label">Format</div>
+          <select id="fix-format-select">
+            <option value="4K UHD">4K UHD</option>
+            <option value="Blu-ray">Blu-ray</option>
+            <option value="DVD">DVD</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="add-form-group" style="flex:2">
+          <div class="add-form-label">Box set (disc location)</div>
+          <input type="text" id="fix-boxset-input" placeholder="e.g. Alien Anthology">
+        </div>
+      </div>
+      <div class="vhs-row" style="margin-top:10px">
+        <input type="checkbox" id="fix-vhs-check">
+        <label for="fix-vhs-check">📼 Also have on VHS</label>
+      </div>
+      <button class="btn btn-accent" style="margin-top:12px;width:100%;padding:10px" onclick="saveDiscInfo()">Save Disc Info</button>
+    </div>
+
+    <div class="fix-section">
+      <div class="fix-section-label">Remove from shelf</div>
+      <button class="btn-danger" onclick="removeMovie()">✕ Remove this film entirely</button>
+    </div>
+
+    <div id="fix-status" style="font-size:0.75rem;color:var(--text-muted);font-style:italic;min-height:18px;margin-top:16px"></div>
+    <div class="fix-close-row">
+      <button class="btn btn-ghost" onclick="closeFixModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- MOVIE DETAIL MODAL -->
+<div id="modal-overlay" onclick="handleModalOverlayClick(event)">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<!-- HEADER -->
+<header id="main-header" style="display:none">
+  <div class="logo">Shelf<span>Your Collection</span></div>
+  <div class="header-stats">
+    <div class="stat"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Films</div></div>
+    <div class="stat"><div class="stat-num" id="stat-watched">0</div><div class="stat-label">Watched</div></div>
+    <div class="stat"><div class="stat-num" id="stat-pct">0%</div><div class="stat-label">Progress</div></div>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-ghost" onclick="syncFromCloud()" title="Sync from cloud" style="padding:10px 12px">⟳</button>
+    <button class="btn btn-ghost" onclick="resetFilters()">Reset</button>
+    <button class="btn btn-ghost" onclick="showImport()">+ Add Film</button>
+    <button class="btn btn-random" onclick="pickRandom()">⚄ Pick One For Me</button>
+  </div>
+</header>
+
+<!-- IMPORT PANEL -->
+<div id="import-panel">
+  <div class="import-headline">Your <em>Collection,</em><br>All in One Place.</div>
+  <div class="import-sub">Import your CLZ library export to get started, or search by title to add new purchases.</div>
+
+  <div class="api-key-row">
+    <label>TMDB API Key</label>
+    <input type="password" id="api-key-input" placeholder="Enter your TMDB v3 API key…">
+    <button class="btn btn-ghost" onclick="saveApiKey()" style="white-space:nowrap">Save Key</button>
+  </div>
+  <div id="api-key-status" style="font-size:0.72rem;color:var(--text-muted);text-align:left;margin-bottom:16px;font-style:italic;min-height:18px"></div>
+
+  <div class="import-tabs">
+    <button class="import-tab active" onclick="switchTab('clz', this)">CLZ Export</button>
+    <button class="import-tab" onclick="switchTab('title', this)">Add by Title</button>
+  </div>
+
+  <div class="import-content">
+    <!-- CLZ EXPORT TAB -->
+    <div class="import-section active" id="tab-clz">
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
+        <div class="drop-icon">📀</div>
+        <div class="drop-label"><strong>Click to upload</strong> or drag & drop your CLZ export CSV</div>
+      </div>
+      <input type="file" id="file-input" style="display:none" accept=".csv,.tsv,.txt" onchange="handleFileInput(event)">
+      <div id="file-status" class="import-hint"></div>
+      <div class="import-hint" style="margin-top:16px">Export from CLZ Movies: Menu → Export → Export to CSV. TV seasons, box sets, and duplicates are handled automatically.</div>
+    </div>
+
+    <!-- ADD BY TITLE TAB -->
+    <div class="import-section" id="tab-title">
+      <div class="search-row">
+        <input type="text" id="title-search-input" placeholder="Search for a film… e.g. Heat 1995" onkeydown="if(event.key==='Enter')searchTMDB()">
+        <button class="btn btn-accent" onclick="searchTMDB()" style="white-space:nowrap">Search TMDB</button>
+      </div>
+      <div id="title-search-status" class="import-hint"></div>
+      <div id="tmdb-results"></div>
+      <div id="add-film-form">
+        <div class="add-form-title">Disc info for <strong id="add-film-title-label"></strong></div>
+        <div class="add-form-row">
+          <div class="add-form-group">
+            <div class="add-form-label">Format</div>
+            <select id="add-format-select">
+              <option value="4K UHD">4K UHD</option>
+              <option value="Blu-ray" selected>Blu-ray</option>
+              <option value="DVD">DVD</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="add-form-group" style="flex:2">
+            <div class="add-form-label">Part of a box set? (optional)</div>
+            <input type="text" id="add-boxset-input" placeholder="e.g. Alien Anthology">
+          </div>
+        </div>
+        <div class="vhs-row">
+          <input type="checkbox" id="add-vhs-check">
+          <label for="add-vhs-check">📼 Also have this on VHS</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="import-actions">
+    <button class="btn btn-accent" id="clz-import-btn" style="width:100%;padding:16px;font-size:0.85rem;letter-spacing:0.15em" onclick="startCLZImport()">Build My Shelf →</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div id="filter-bar">
+    <div class="filter-group filter-search">
+      <div class="filter-label">Search</div>
+      <input type="text" id="search-input" placeholder="Title, director, actor…" oninput="applyFilters()">
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Genre</div>
+      <select id="filter-genre" onchange="applyFilters()"><option value="">All Genres</option></select>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Decade</div>
+      <select id="filter-decade" onchange="applyFilters()"><option value="">All Decades</option></select>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Format</div>
+      <select id="filter-format" onchange="applyFilters()">
+        <option value="">All Formats</option>
+        <option value="4K UHD">4K UHD</option>
+        <option value="Blu-ray">Blu-ray</option>
+        <option value="DVD">DVD</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Series</div>
+      <select id="filter-collection" onchange="applyFilters()"><option value="">All Films</option></select>
+    </div>
+    <div class="filter-group range-wrap">
+      <div class="filter-label">Max Runtime</div>
+      <div class="range-row">
+        <input type="range" id="filter-runtime" min="30" max="300" value="300" step="10" oninput="updateRuntimeLabel();applyFilters()">
+        <span class="range-val" id="runtime-val">Any</span>
+      </div>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Status</div>
+      <div class="filter-toggles">
+        <button class="toggle-btn active" data-status="all" onclick="setStatusFilter(this)">All</button>
+        <button class="toggle-btn" data-status="unwatched" onclick="setStatusFilter(this)">Unwatched</button>
+        <button class="toggle-btn" data-status="watched" onclick="setStatusFilter(this)">Watched</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="filter-results">
+    <span id="results-count">Showing all films</span>
+    <div class="sort-bar">
+      Sort:
+      <button class="sort-btn active" data-sort="title" onclick="setSort(this)">Title</button>
+      <button class="sort-btn" data-sort="year" onclick="setSort(this)">Year</button>
+      <button class="sort-btn" data-sort="rating" onclick="setSort(this)">Rating</button>
+      <button class="sort-btn" data-sort="runtime" onclick="setSort(this)">Runtime</button>
+      <button class="sort-btn" data-sort="dateAdded" onclick="setSort(this)">Date Added</button>
+    </div>
+  </div>
+
+  <div id="grid"></div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────
+let movies = [];
+let filteredMovies = [];
+let watchedSet = new Set();
+let currentSort = 'title';
+let currentStatusFilter = 'all';
+let currentRandomMovie = null;
+let selectedTMDBResult = null;
+let apiKey = '';
+
+const TMDB_BASE = 'https://api.themoviedb.org/3';
+const TMDB_IMG = 'https://image.tmdb.org/t/p/w342';
+const TMDB_IMG_LG = 'https://image.tmdb.org/t/p/w500';
+const STORAGE_KEY_APIKEY = 'shelf_apikey';
+
+// ── SUPABASE ───────────────────────────────────────────────────────────────
+const SB_URL = 'https://lpfixzzzboopszwueidp.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwZml4enp6Ym9vcHN6d3VlaWRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NDg4MjIsImV4cCI6MjA4NjQyNDgyMn0.xeX1dMHsJGVZPnMwIyZASQoVo7OWC-0Qj7Eq5V8KwW8';
+const SB_HEADERS = { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` };
+
+async function sbFetch(path, options = {}) {
+  const res = await fetch(`${SB_URL}/rest/v1/${path}`, { headers: SB_HEADERS, ...options });
+  if (!res.ok) { const err = await res.text(); throw new Error(`Supabase: ${err}`); }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+async function sbLoadMovies() {
+  const rows = await sbFetch('shelf_movies?select=id,data&order=id');
+  return (rows || []).map(r => ({ ...r.data, id: String(r.data.id) }));
+}
+async function sbSaveMovie(movie) {
+  await sbFetch('shelf_movies', {
+    method: 'POST',
+    headers: { ...SB_HEADERS, 'Prefer': 'resolution=merge-duplicates' },
+    body: JSON.stringify({ id: String(movie.id), data: movie, updated_at: new Date().toISOString() })
+  });
+}
+async function sbDeleteMovie(id) {
+  await sbFetch(`shelf_movies?id=eq.${encodeURIComponent(String(id))}`, { method: 'DELETE' });
+}
+async function sbLoadWatched() {
+  const rows = await sbFetch('shelf_watched?select=movie_id');
+  return new Set((rows || []).map(r => String(r.movie_id)));
+}
+async function sbSetWatched(movieId, watched) {
+  const id = String(movieId);
+  if (watched) {
+    await sbFetch('shelf_watched', {
+      method: 'POST',
+      headers: { ...SB_HEADERS, 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ movie_id: id, watched_at: new Date().toISOString() })
+    });
+  } else {
+    await sbFetch(`shelf_watched?movie_id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
+  }
+}
+
+// ── PASSWORD ───────────────────────────────────────────────────────────────
+const STORAGE_KEY_AUTH = 'shelf_auth';
+function simpleHash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) { h = ((h << 5) - h) + str.charCodeAt(i); h |= 0; }
+  return Math.abs(h).toString(16);
+}
+const CORRECT_HASH = simpleHash('paddington');
+function checkPassword() {
+  const val = document.getElementById('pw-input').value;
+  const input = document.getElementById('pw-input');
+  const error = document.getElementById('pw-error');
+  if (simpleHash(val) === CORRECT_HASH) {
+    localStorage.setItem(STORAGE_KEY_AUTH, CORRECT_HASH);
+    document.getElementById('pw-overlay').classList.add('unlocked');
+    error.textContent = '';
+  } else {
+    input.classList.add('error');
+    error.textContent = 'Incorrect password';
+    input.value = '';
+    setTimeout(() => input.classList.remove('error'), 400);
+  }
+}
+function checkAuth() {
+  if (localStorage.getItem(STORAGE_KEY_AUTH) === CORRECT_HASH) {
+    document.getElementById('pw-overlay').classList.add('unlocked');
+    return true;
+  }
+  setTimeout(() => document.getElementById('pw-input').focus(), 100);
+  return false;
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  checkAuth();
+  const savedKey = localStorage.getItem(STORAGE_KEY_APIKEY);
+  if (savedKey) {
+    apiKey = savedKey;
+    document.getElementById('api-key-input').value = savedKey;
+    document.getElementById('api-key-status').textContent = '✓ API key loaded';
+  }
+  document.getElementById('import-panel').style.display = 'block';
+  const statusEl = document.getElementById('api-key-status');
+  try {
+    statusEl.textContent = (savedKey ? '✓ API key loaded · ' : '') + '⟳ Syncing…';
+    const [loadedMovies, loadedWatched] = await Promise.all([sbLoadMovies(), sbLoadWatched()]);
+    movies = loadedMovies;
+    watchedSet = loadedWatched;
+    statusEl.textContent = savedKey ? '✓ API key loaded' : '';
+    if (movies.length > 0) showApp();
+  } catch(e) {
+    console.warn('Supabase load error:', e);
+    statusEl.textContent = savedKey ? '✓ API key loaded · ⚠ Working offline' : '⚠ Could not connect — working offline';
+  }
+});
+
+// ── API KEY ────────────────────────────────────────────────────────────────
+function saveApiKey() {
+  const val = document.getElementById('api-key-input').value.trim();
+  if (!val) return;
+  apiKey = val;
+  localStorage.setItem(STORAGE_KEY_APIKEY, val);
+  document.getElementById('api-key-status').textContent = '✓ Key saved';
+}
+
+// ── TABS ───────────────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.import-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.import-section').forEach(s => s.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  // Swap the action button
+  const actionsDiv = document.getElementById('import-actions');
+  if (name === 'clz') {
+    actionsDiv.innerHTML = '<button class="btn btn-accent" id="clz-import-btn" style="width:100%;padding:16px;font-size:0.85rem;letter-spacing:0.15em" onclick="startCLZImport()">Build My Shelf →</button>';
+  } else {
+    actionsDiv.innerHTML = '<button class="btn btn-accent" id="add-film-btn" style="width:100%;padding:16px;font-size:0.85rem;letter-spacing:0.15em" onclick="addSelectedFilm()" disabled>Add to Shelf →</button>';
+  }
+}
+
+// ── FILE HANDLING ──────────────────────────────────────────────────────────
+function dragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag-over'); }
+function dragLeave() { document.getElementById('drop-zone').classList.remove('drag-over'); }
+function dropFile(e) { e.preventDefault(); dragLeave(); const f = e.dataTransfer.files[0]; if (f) processFile(f); }
+function handleFileInput(e) { const f = e.target.files[0]; if (f) processFile(f); }
+
+let parsedCLZData = null;
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    const { toProcess, tvCount, boxSetCount } = preprocessCLZ(text);
+    parsedCLZData = { text, toProcess };
+    document.getElementById('file-status').textContent =
+      `✓ "${file.name}" · ${toProcess.length} unique films found · ${tvCount} TV seasons skipped · ${boxSetCount} box sets processed`;
+  };
+  reader.readAsText(file);
+}
+
+// ── CSV PARSER ─────────────────────────────────────────────────────────────
+function splitCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (const ch of line) {
+    if (ch === '"') { inQuotes = !inQuotes; }
+    else if (ch === ',' && !inQuotes) { result.push(current); current = ''; }
+    else { current += ch; }
+  }
+  result.push(current);
+  return result;
+}
+
+function parseCLZCsv(text) {
+  const lines = text.split('\n');
+  if (!lines.length) return [];
+  const headerParts = splitCSVLine(lines[0]);
+  const cols = headerParts.map(c => c.replace(/^"|"$/g,'').trim().toLowerCase().replace(/[\s"]/g,''));
+  const idx = (names) => { for (const n of names) { const i = cols.findIndex(c => c.includes(n)); if (i >= 0) return i; } return -1; };
+  const titleIdx = idx(['title']);
+  const relIdx = idx(['releasedate','release']);
+  const genreIdx = idx(['genre']);
+  const runtimeIdx = idx(['runtime']);
+  const dirIdx = idx(['director']);
+  const formatIdx = idx(['format']);
+  const distIdx = idx(['distributor']);
+  const addedIdx = idx(['addeddate','added']);
+
+  const entries = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const parts = splitCSVLine(line);
+    const get = (j) => j >= 0 && parts[j] !== undefined ? parts[j].replace(/^"|"$/g,'').trim() : '';
+    const title = get(titleIdx);
+    if (!title) continue;
+    entries.push({
+      title,
+      releaseDate: get(relIdx),
+      genres: get(genreIdx),
+      runtime: parseInt(get(runtimeIdx)) || 0,
+      director: get(dirIdx),
+      format: get(formatIdx),
+      distributor: get(distIdx),
+      addedDate: get(addedIdx)
+    });
+  }
+  return entries;
+}
+
+// ── ENTRY CLASSIFICATION ───────────────────────────────────────────────────
+function classifyEntry(entry) {
+  const t = entry.title;
+  // TV Series
+  if (/:\s*Season\s+\d/i.test(t) || /Season\s+\d+:/i.test(t)) return 'tv';
+  if (/:\s*Series\s+\d/i.test(t) || /Complete\s+Series/i.test(t)) return 'tv';
+  if (/\bS\d{2}\b/.test(t) && entry.runtime > 300) return 'tv';
+  // Slash-separated box set
+  if (t.includes(' / ') && t.split(' / ').length >= 2) return 'boxset-slash';
+  // Named box set / compilation
+  const boxKw = /\b(anthology|trilogy|quadrilogy|box\s?set|boxset|masterpiece\s+collection|ultimate\s+collection|favorites?|complete\s+collection|film\s+collection|movie\s+collection|double\s+feature|double\s+bill|mixtape|vault\s+of|thrillers?\s+collection)\b/i;
+  if (boxKw.test(t)) return 'boxset-named';
+  if (/^\d+\s+(Film|Movie)\s+(Favorites?|Collection|Pack)/i.test(t)) return 'boxset-named';
+  // Long runtime + multiple directors = likely a compilation
+  if (entry.runtime > 300 && entry.director && entry.director.split(' | ').length > 2) return 'boxset-named';
+  // AGFA / mixtape style
+  if (/mixtape|trailer\s+show|mystery\s+vault/i.test(t)) return 'boxset-named';
+  return 'movie';
+}
+
+function normalizeTitle(title) {
+  return title.toLowerCase()
+    .replace(/^(the|a|an)\s+/i, '')
+    .replace(/[^a-z0-9]/g, '')
+    .trim();
+}
+
+function getFormatPriority(format) {
+  const f = (format || '').toLowerCase();
+  if (f.includes('4k') || f.includes('ultra hd') || f.includes('uhd')) return 5;
+  if (f.includes('blu') && !f.includes('3d')) return 4;
+  if (f.includes('blu') && f.includes('3d')) return 3;
+  if (f.includes('dvd')) return 2;
+  if (f.includes('vhs')) return 1;
+  return 3;
+}
+
+function normalizeFormat(format) {
+  const f = (format || '').toLowerCase();
+  if (f.includes('4k') || f.includes('ultra hd') || f.includes('uhd')) return '4K UHD';
+  if (f.includes('blu')) return f.includes('3d') ? 'Blu-ray 3D' : 'Blu-ray';
+  if (f.includes('dvd')) return 'DVD';
+  if (f.includes('vhs')) return 'VHS';
+  return format || 'Blu-ray';
+}
+
+// ── PREPROCESS CLZ ─────────────────────────────────────────────────────────
+function preprocessCLZ(text) {
+  const rawEntries = parseCLZCsv(text);
+  let tvCount = 0;
+  const boxSets = [];
+  const movieEntries = [];
+
+  for (const entry of rawEntries) {
+    const type = classifyEntry(entry);
+    if (type === 'tv') {
+      tvCount++;
+    } else if (type === 'boxset-slash') {
+      boxSets.push({ ...entry, _isSlash: true });
+      // Extract individual titles from slash-separated box set
+      const parts = entry.title.split(' / ').map(t => t.trim()).filter(Boolean);
+      for (const part of parts) {
+        movieEntries.push({ ...entry, title: part, _boxSetSource: entry.title, _fromBoxSet: true });
+      }
+    } else if (type === 'boxset-named') {
+      boxSets.push({ ...entry, _isSlash: false });
+      // Named box sets: keep as reference only, don't add as individual movies
+    } else {
+      movieEntries.push(entry);
+    }
+  }
+
+  // Deduplicate: best format wins; merge box set sources
+  const dedupMap = new Map();
+  for (const entry of movieEntries) {
+    const key = normalizeTitle(entry.title) + '_' + (entry.releaseDate ? entry.releaseDate.slice(-4) : '');
+    const fmtPriority = getFormatPriority(entry.format);
+    const isVHS = (entry.format || '').toLowerCase().includes('vhs');
+
+    if (!dedupMap.has(key)) {
+      dedupMap.set(key, {
+        entry: { ...entry },
+        formatPriority: fmtPriority,
+        hasVHS: isVHS,
+        boxSetSources: entry._boxSetSource ? [entry._boxSetSource] : []
+      });
+    } else {
+      const existing = dedupMap.get(key);
+      if (fmtPriority > existing.formatPriority) {
+        const savedBoxSets = existing.boxSetSources;
+        const savedVHS = existing.hasVHS;
+        existing.entry = { ...entry };
+        existing.formatPriority = fmtPriority;
+        existing.hasVHS = savedVHS || isVHS;
+        existing.boxSetSources = savedBoxSets;
+      } else {
+        if (isVHS) existing.hasVHS = true;
+      }
+      if (entry._boxSetSource && !existing.boxSetSources.includes(entry._boxSetSource)) {
+        existing.boxSetSources.push(entry._boxSetSource);
+      }
+    }
+  }
+
+  // Try to link named box sets to individual movies
+  for (const bs of boxSets) {
+    if (bs._isSlash) continue;
+    for (const [, record] of dedupMap) {
+      const mTitle = record.entry.title.toLowerCase();
+      const bsTitle = bs.title.toLowerCase();
+      if (mTitle.length >= 4 && bsTitle.includes(mTitle)) {
+        if (!record.boxSetSources.includes(bs.title)) {
+          record.boxSetSources.push(bs.title);
+        }
+      }
+    }
+  }
+
+  const toProcess = [...dedupMap.values()];
+  return { toProcess, tvCount, boxSetCount: boxSets.length };
+}
+
+// ── CLZ IMPORT ─────────────────────────────────────────────────────────────
+async function startCLZImport() {
+  if (!apiKey) { alert('Please enter your TMDB API key first.'); return; }
+  if (!parsedCLZData) { alert('Please upload your CLZ CSV export first.'); return; }
+
+  const { toProcess } = parsedCLZData;
+
+  // Skip entries already in the collection
+  const existingIds = new Set(movies.map(m => m.id));
+  const existingSearchTitles = new Set(movies.map(m => normalizeTitle(m.searchTitle || m.title)));
+  const newEntries = toProcess.filter(r => !existingSearchTitles.has(normalizeTitle(r.entry.title)));
+
+  if (!newEntries.length) { alert('All films already on your shelf!'); showApp(); return; }
+
+  showProgress('BUILDING YOUR SHELF', `Processing ${newEntries.length} films…`);
+
+  const results = [];
+  const collectionQueue = new Map(); // collectionId → Set of movie IDs that need order
+
+  for (let i = 0; i < newEntries.length; i++) {
+    const record = newEntries[i];
+    const entry = record.entry;
+    const titleStr = entry.title;
+    const yearHint = entry.releaseDate ? entry.releaseDate.replace(/\D/g,'').slice(-4) : '';
+
+    setProgress(`Searching: "${titleStr}" (${i + 1} / ${newEntries.length})`, (i / newEntries.length) * 85);
+
+    try {
+      const movie = await fetchMovieForShelf(titleStr, yearHint);
+      if (movie) {
+        movie.format = normalizeFormat(entry.format);
+        movie.hasVHS = record.hasVHS;
+        movie.boxSet = record.boxSetSources.length > 0 ? record.boxSetSources[0] : null;
+        movie.searchTitle = titleStr;
+        if (movie.collectionId) {
+          if (!collectionQueue.has(movie.collectionId)) collectionQueue.set(movie.collectionId, []);
+          collectionQueue.get(movie.collectionId).push(movie);
+        }
+        results.push(movie);
+      } else {
+        results.push({ id: `notfound_${Date.now()}_${i}`, title: titleStr, searchTitle: titleStr, notFound: true, format: normalizeFormat(entry.format), hasVHS: record.hasVHS, boxSet: record.boxSetSources[0] || null, dateAdded: new Date().toISOString() });
+      }
+    } catch(err) {
+      console.warn('Fetch error for', titleStr, err);
+      results.push({ id: `error_${Date.now()}_${i}`, title: titleStr, searchTitle: titleStr, notFound: true, format: normalizeFormat(entry.format), hasVHS: record.hasVHS, boxSet: record.boxSetSources[0] || null, dateAdded: new Date().toISOString() });
+    }
+    await sleep(100);
+  }
+
+  // Fetch collection orders
+  if (collectionQueue.size > 0) {
+    let ci = 0;
+    for (const [collId, collMovies] of collectionQueue) {
+      setProgress(`Fetching series data… (${++ci} / ${collectionQueue.size})`, 85 + (ci / collectionQueue.size) * 10);
+      try {
+        const order = await fetchCollectionOrder(collId);
+        for (const m of collMovies) {
+          m.collectionOrder = order[m.tmdbId] || null;
+        }
+      } catch(e) { console.warn('Collection fetch failed', collId, e); }
+      await sleep(100);
+    }
+  }
+
+  // Save to Supabase
+  setProgress('Saving to cloud…', 95);
+  for (const movie of results) {
+    try { await sbSaveMovie(movie); } catch(e) { console.warn('Save failed:', movie.title, e); }
+  }
+
+  movies = [...movies, ...results];
+  hideProgress();
+  showApp();
+}
+
+// ── TMDB FETCH ─────────────────────────────────────────────────────────────
+async function fetchMovieForShelf(titleStr, year) {
+  const yearMatch = titleStr.match(/\b(19|20)\d{2}\b/);
+  const yearHint = year || (yearMatch ? yearMatch[0] : '');
+  const cleanTitle = titleStr.replace(/\b(19|20)\d{2}\b/, '').trim();
+
+  let url = `${TMDB_BASE}/search/movie?api_key=${apiKey}&query=${encodeURIComponent(cleanTitle)}&include_adult=true`;
+  if (yearHint) url += `&year=${yearHint}`;
+
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!data.results || !data.results.length) return null;
+
+  const result = data.results[0];
+  await sleep(80);
+  const detail = await fetchMovieDetail(result.id);
+
+  return buildMovieObject(result, detail, titleStr);
+}
+
+async function fetchMovieDetail(id) {
+  const url = `${TMDB_BASE}/movie/${id}?api_key=${apiKey}&append_to_response=credits`;
+  const res = await fetch(url);
+  return await res.json();
+}
+
+async function fetchCollectionOrder(collectionId) {
+  const url = `${TMDB_BASE}/collection/${collectionId}?api_key=${apiKey}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  const order = {};
+  if (data.parts) {
+    const sorted = [...data.parts].sort((a, b) => {
+      if (a.release_date && b.release_date) return a.release_date.localeCompare(b.release_date);
+      return (a.id || 0) - (b.id || 0);
+    });
+    sorted.forEach((part, idx) => { order[String(part.id)] = idx + 1; });
+  }
+  return order;
+}
+
+function buildMovieObject(result, detail, searchTitle) {
+  return {
+    id: String(result.id),
+    searchTitle: searchTitle || result.title,
+    title: result.title,
+    originalTitle: result.original_title,
+    year: result.release_date ? result.release_date.split('-')[0] : '—',
+    overview: result.overview,
+    poster: result.poster_path ? TMDB_IMG + result.poster_path : null,
+    posterLg: result.poster_path ? TMDB_IMG_LG + result.poster_path : null,
+    rating: result.vote_average ? Math.round(result.vote_average * 10) / 10 : null,
+    voteCount: result.vote_count,
+    genres: detail?.genres?.map(g => g.name) || [],
+    runtime: detail?.runtime || null,
+    director: detail?.credits?.crew?.find(c => c.job === 'Director')?.name || null,
+    cast: detail?.credits?.cast?.slice(0, 4).map(c => c.name) || [],
+    countries: detail?.production_countries?.map(c => c.name) || [],
+    language: detail?.original_language || result.original_language,
+    tmdbId: String(result.id),
+    collectionId: detail?.belongs_to_collection?.id ? String(detail.belongs_to_collection.id) : null,
+    collectionName: detail?.belongs_to_collection?.name || null,
+    collectionOrder: null, // filled after collection fetch
+    format: 'Blu-ray', // overridden by caller
+    hasVHS: false,     // overridden by caller
+    boxSet: null,      // overridden by caller
+    dateAdded: new Date().toISOString(),
+    notFound: false
+  };
+}
+
+// ── PROGRESS HELPERS ───────────────────────────────────────────────────────
+function showProgress(title, sub) {
+  document.getElementById('progress-title').textContent = title;
+  document.getElementById('progress-sub').textContent = sub;
+  document.getElementById('progress-fill').style.width = '0%';
+  document.getElementById('progress-overlay').classList.add('active');
+}
+function setProgress(sub, pct) {
+  document.getElementById('progress-sub').textContent = sub;
+  document.getElementById('progress-fill').style.width = `${Math.min(pct, 100)}%`;
+}
+function hideProgress() {
+  document.getElementById('progress-overlay').classList.remove('active');
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── ADD BY TITLE ──────────────────────────────────────────────────────────
+async function searchTMDB() {
+  if (!apiKey) { alert('Please enter your TMDB API key first.'); return; }
+  const query = document.getElementById('title-search-input').value.trim();
+  if (!query) return;
+
+  const statusEl = document.getElementById('title-search-status');
+  const resultsEl = document.getElementById('tmdb-results');
+  statusEl.textContent = '⟳ Searching…';
+  resultsEl.style.display = 'none';
+  resultsEl.innerHTML = '';
+  document.getElementById('add-film-form').style.display = 'none';
+  selectedTMDBResult = null;
+
+  const yearMatch = query.match(/\b(19|20)\d{2}\b/);
+  const year = yearMatch ? yearMatch[0] : '';
+  const cleanQ = query.replace(/\b(19|20)\d{2}\b/, '').trim();
+
+  let url = `${TMDB_BASE}/search/movie?api_key=${apiKey}&query=${encodeURIComponent(cleanQ)}&include_adult=true`;
+  if (year) url += `&year=${year}`;
+
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    const results = (data.results || []).slice(0, 5);
+
+    if (!results.length) { statusEl.textContent = 'No results found. Try a different title or add a year.'; return; }
+    statusEl.textContent = `${results.length} result${results.length > 1 ? 's' : ''} found — click one to select`;
+
+    resultsEl.style.display = 'block';
+    resultsEl.innerHTML = '';
+    results.forEach(r => {
+      const yr = r.release_date ? r.release_date.slice(0, 4) : '—';
+      const div = document.createElement('div');
+      div.className = 'tmdb-result';
+      div.innerHTML = `
+        <div class="tmdb-result-poster">${r.poster_path ? `<img src="${TMDB_IMG}${r.poster_path}" alt="">` : '<div class="no-poster">🎞</div>'}</div>
+        <div class="tmdb-result-info">
+          <div class="tmdb-result-title">${escHtml(r.title)}</div>
+          <div class="tmdb-result-meta">${yr}${r.original_title && r.original_title !== r.title ? ' · ' + escHtml(r.original_title) : ''}${r.overview ? ' — ' + escHtml(r.overview.slice(0, 80)) + '…' : ''}</div>
+        </div>`;
+      div.onclick = () => selectTMDBResult(r, div);
+      resultsEl.appendChild(div);
+    });
+  } catch(e) {
+    statusEl.textContent = 'Error searching. Check your API key.';
+  }
+}
+
+function selectTMDBResult(result, el) {
+  document.querySelectorAll('.tmdb-result').forEach(d => d.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedTMDBResult = result;
+  document.getElementById('add-film-title-label').textContent = result.title;
+  document.getElementById('add-film-form').style.display = 'block';
+  document.getElementById('add-boxset-input').value = '';
+  document.getElementById('add-vhs-check').checked = false;
+  const btn = document.getElementById('add-film-btn');
+  if (btn) btn.disabled = false;
+}
+
+async function addSelectedFilm() {
+  if (!selectedTMDBResult) return;
+  if (!apiKey) { alert('API key needed.'); return; }
+
+  const format = document.getElementById('add-format-select').value;
+  const boxSet = document.getElementById('add-boxset-input').value.trim() || null;
+  const hasVHS = document.getElementById('add-vhs-check').checked;
+  const r = selectedTMDBResult;
+
+  // Check for duplicate
+  if (movies.find(m => m.tmdbId === String(r.id))) {
+    if (!confirm(`"${r.title}" is already on your shelf. Add anyway?`)) return;
+  }
+
+  showProgress('ADDING FILM', `Fetching details for "${r.title}"…`);
+  setProgress(`Fetching "${r.title}"…`, 30);
+
+  try {
+    const detail = await fetchMovieDetail(r.id);
+    const movie = buildMovieObject(r, detail, r.title);
+    movie.format = format;
+    movie.hasVHS = hasVHS;
+    movie.boxSet = boxSet;
+
+    if (movie.collectionId) {
+      setProgress('Fetching series info…', 60);
+      const order = await fetchCollectionOrder(movie.collectionId);
+      movie.collectionOrder = order[movie.tmdbId] || null;
+    }
+
+    setProgress('Saving…', 90);
+    await sbSaveMovie(movie);
+    movies.push(movie);
+
+    hideProgress();
+    showApp();
+    // Brief flash to find the newly added film
+    setTimeout(() => {
+      document.getElementById('search-input').value = movie.title;
+      applyFilters();
+    }, 300);
+  } catch(e) {
+    hideProgress();
+    alert('Error adding film. Check your API key and connection.');
+    console.error(e);
+  }
+}
+
+// ── SHOW / HIDE PANELS ────────────────────────────────────────────────────
+function showApp() {
+  document.getElementById('import-panel').style.display = 'none';
+  document.getElementById('main-header').style.display = 'flex';
+  document.getElementById('app').classList.add('active');
+  buildFilterOptions();
+  applyFilters();
+  updateStats();
+}
+
+function showImport() {
+  document.getElementById('import-panel').style.display = 'block';
+  document.getElementById('main-header').style.display = 'none';
+  document.getElementById('app').classList.remove('active');
+  // Switch to Add by Title tab when coming from the header
+  if (movies.length > 0) {
+    const titleTab = document.querySelector('.import-tab:nth-child(2)');
+    switchTab('title', titleTab);
+  }
+}
+
+async function syncFromCloud() {
+  const btn = event.target;
+  const orig = btn.textContent;
+  btn.textContent = '⟳'; btn.disabled = true; btn.style.opacity = '0.5';
+  try {
+    const [m, w] = await Promise.all([sbLoadMovies(), sbLoadWatched()]);
+    movies = m; watchedSet = w;
+    buildFilterOptions(); applyFilters(); updateStats();
+    btn.textContent = '✓';
+    setTimeout(() => { btn.textContent = orig; btn.style.opacity = '1'; btn.disabled = false; }, 1000);
+  } catch(e) {
+    btn.textContent = '✕'; btn.style.color = 'var(--accent2)';
+    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; btn.style.opacity = '1'; btn.disabled = false; }, 1500);
+  }
+}
+
+// ── FILTER OPTIONS ────────────────────────────────────────────────────────
+function buildFilterOptions() {
+  const genres = new Set();
+  const decades = new Set();
+  const collections = new Map(); // id → name
+
+  movies.filter(m => !m.notFound).forEach(m => {
+    m.genres?.forEach(g => genres.add(g));
+    if (m.year && m.year !== '—') decades.add(Math.floor(parseInt(m.year) / 10) * 10);
+    if (m.collectionId && m.collectionName) collections.set(m.collectionId, m.collectionName);
+  });
+
+  populateSelect('filter-genre', [...genres].sort());
+  populateSelect('filter-decade', [...decades].sort((a,b)=>b-a).map(d=>({value:d,label:`${d}s`})));
+
+  // Collections dropdown
+  const collSel = document.getElementById('filter-collection');
+  const prevColl = collSel.value;
+  while (collSel.options.length > 1) collSel.remove(1);
+  [...collections.entries()].sort((a,b)=>a[1].localeCompare(b[1])).forEach(([id, name]) => {
+    const opt = document.createElement('option');
+    opt.value = id; opt.textContent = name; collSel.appendChild(opt);
+  });
+  if (prevColl) collSel.value = prevColl;
+}
+
+function populateSelect(id, items) {
+  const sel = document.getElementById(id);
+  const current = sel.value;
+  while (sel.options.length > 1) sel.remove(1);
+  items.forEach(item => {
+    const opt = document.createElement('option');
+    if (typeof item === 'object') { opt.value = item.value; opt.textContent = item.label; }
+    else { opt.value = item; opt.textContent = item; }
+    sel.appendChild(opt);
+  });
+  if (current) sel.value = current;
+}
+
+// ── FILTERS ───────────────────────────────────────────────────────────────
+function applyFilters() {
+  const search = document.getElementById('search-input').value.toLowerCase().trim();
+  const genre = document.getElementById('filter-genre').value;
+  const decade = document.getElementById('filter-decade').value;
+  const format = document.getElementById('filter-format').value;
+  const collection = document.getElementById('filter-collection').value;
+  const runtime = parseInt(document.getElementById('filter-runtime').value) || 300;
+
+  filteredMovies = movies.filter(m => {
+    if (m.notFound) {
+      if (search && !m.title.toLowerCase().includes(search)) return false;
+      return matchStatus(m);
+    }
+    if (search && !m.title.toLowerCase().includes(search) &&
+        !(m.director?.toLowerCase().includes(search)) &&
+        !(m.cast?.some(c => c.toLowerCase().includes(search)))) return false;
+    if (genre && !m.genres?.includes(genre)) return false;
+    if (decade && Math.floor(parseInt(m.year) / 10) * 10 !== parseInt(decade)) return false;
+    if (format && m.format !== format) return false;
+    if (collection && m.collectionId !== collection) return false;
+    if (runtime < 300 && m.runtime && m.runtime > runtime) return false;
+    return matchStatus(m);
+  });
+
+  sortMovies();
+  renderGrid();
+  const total = filteredMovies.length;
+  document.getElementById('results-count').textContent =
+    total === movies.length ? `Showing all ${total} films` : `Showing ${total} of ${movies.length} films`;
+}
+
+function matchStatus(m) {
+  const w = watchedSet.has(m.id);
+  if (currentStatusFilter === 'watched') return w;
+  if (currentStatusFilter === 'unwatched') return !w;
+  return true;
+}
+
+function updateRuntimeLabel() {
+  const val = parseInt(document.getElementById('filter-runtime').value);
+  document.getElementById('runtime-val').textContent = val >= 300 ? 'Any' : `≤ ${val}m`;
+}
+
+function setStatusFilter(btn) {
+  document.querySelectorAll('[data-status]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentStatusFilter = btn.dataset.status;
+  applyFilters();
+}
+
+function setSort(btn) {
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentSort = btn.dataset.sort;
+  sortMovies(); renderGrid();
+}
+
+function sortMovies() {
+  filteredMovies.sort((a, b) => {
+    if (currentSort === 'title') return (a.title || '').localeCompare(b.title || '');
+    if (currentSort === 'year') return parseInt(b.year || 0) - parseInt(a.year || 0);
+    if (currentSort === 'rating') return (b.rating || 0) - (a.rating || 0);
+    if (currentSort === 'runtime') return (a.runtime || 999) - (b.runtime || 999);
+    if (currentSort === 'dateAdded') return new Date(b.dateAdded || 0) - new Date(a.dateAdded || 0);
+    return 0;
+  });
+}
+
+function resetFilters() {
+  document.getElementById('search-input').value = '';
+  document.getElementById('filter-genre').value = '';
+  document.getElementById('filter-decade').value = '';
+  document.getElementById('filter-format').value = '';
+  document.getElementById('filter-collection').value = '';
+  document.getElementById('filter-runtime').value = '300';
+  updateRuntimeLabel();
+  document.querySelectorAll('[data-status]').forEach(b => b.classList.remove('active'));
+  document.querySelector('[data-status="all"]').classList.add('active');
+  currentStatusFilter = 'all';
+  applyFilters();
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────
+function fmtBadgeHTML(format) {
+  if (!format) return '';
+  const cls = format === '4K UHD' ? 'fmt-4k' : format.startsWith('Blu') ? 'fmt-bluray' : format === 'DVD' ? 'fmt-dvd' : 'fmt-other';
+  const label = format === '4K UHD' ? '4K' : format === 'Blu-ray' ? 'BD' : format;
+  return `<span class="fmt-badge ${cls}">${escHtml(label)}</span>`;
+}
+
+function renderGrid() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  if (!filteredMovies.length) {
+    grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📀</div><div class="empty-state-title">No Films Found</div><div class="empty-state-sub">Try adjusting your filters</div></div>`;
+    return;
+  }
+  filteredMovies.forEach((movie, i) => {
+    const card = document.createElement('div');
+    card.className = 'card' + (watchedSet.has(movie.id) ? ' watched' : '');
+    card.style.animationDelay = `${Math.min(i, 30) * 0.02}s`;
+    card.onclick = () => openModal(movie);
+
+    const posterHTML = movie.poster
+      ? `<img class="card-poster" src="${movie.poster}" alt="${escHtml(movie.title)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="card-poster-placeholder" style="display:none"><div class="film-icon">🎞</div><div class="placeholder-title">${escHtml(movie.title)}</div></div>`
+      : `<div class="card-poster-placeholder"><div class="film-icon">🎞</div><div class="placeholder-title">${escHtml(movie.title)}</div></div>`;
+
+    card.innerHTML = `
+      <div class="card-watched-badge">✓ Seen</div>
+      <button class="card-edit-btn" onclick="openFixModal('${escHtml(String(movie.id))}');event.stopPropagation()">✎ Fix</button>
+      ${posterHTML}
+      <div class="card-info">
+        <div class="card-title">${escHtml(movie.title)}</div>
+        <div class="card-meta">
+          <span class="card-year">${movie.year || '—'}</span>
+          ${movie.rating ? `<span class="card-rating">★ ${movie.rating}</span>` : ''}
+          ${fmtBadgeHTML(movie.format)}
+        </div>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+// ── STATS ─────────────────────────────────────────────────────────────────
+function updateStats() {
+  const total = movies.length;
+  const watched = watchedSet.size;
+  const pct = total ? Math.round((watched / total) * 100) : 0;
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-watched').textContent = watched;
+  document.getElementById('stat-pct').textContent = pct + '%';
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────────
+function openModal(movie) {
+  const isWatched = watchedSet.has(movie.id);
+  const content = document.getElementById('modal-content');
+  const posterHTML = movie.posterLg || movie.poster
+    ? `<img class="modal-poster" src="${movie.posterLg || movie.poster}" alt="${escHtml(movie.title)}" onerror="this.outerHTML='<div class=\\'modal-poster-placeholder\\'>🎞</div>'">`
+    : `<div class="modal-poster-placeholder">🎞</div>`;
+
+  // Format badge
+  const fmtBadge = fmtBadgeHTML(movie.format);
+  const vhsBadge = movie.hasVHS ? `<span class="vhs-note">📼 also on VHS</span>` : '';
+
+  // Series context
+  let seriesHTML = '';
+  if (movie.collectionName && movie.collectionOrder) {
+    // Count total films in collection that we own
+    const collMovies = movies.filter(m => m.collectionId === movie.collectionId);
+    seriesHTML = `<div class="modal-meta-item"><div class="modal-meta-label">Series</div><div class="modal-meta-value" style="color:var(--accent)">Film ${movie.collectionOrder} of ${collMovies.length} · ${escHtml(movie.collectionName)}</div></div>`;
+  } else if (movie.collectionName) {
+    seriesHTML = `<div class="modal-meta-item"><div class="modal-meta-label">Series</div><div class="modal-meta-value" style="color:var(--accent)">${escHtml(movie.collectionName)}</div></div>`;
+  }
+
+  // Disc location strip
+  let discStrip = '';
+  if (movie.boxSet || movie.hasVHS) {
+    const boxLine = movie.boxSet ? `<div class="disc-item"><span class="disc-label">Find disc in</span><span class="disc-value"><strong>${escHtml(movie.boxSet)}</strong></span></div>` : '';
+    const vhsLine = movie.hasVHS ? `<div class="disc-item"><span class="disc-label">Also on</span><span class="disc-value"><em>📼 VHS</em></span></div>` : '';
+    discStrip = `<div class="modal-disc-strip">${boxLine}${vhsLine}</div>`;
+  }
+
+  content.innerHTML = `
+    <div class="modal-hero">
+      ${posterHTML}
+      <div class="modal-hero-info">
+        <div>
+          <div class="modal-title">${escHtml(movie.title)}</div>
+          ${movie.originalTitle && movie.originalTitle !== movie.title ? `<div class="modal-original-title">${escHtml(movie.originalTitle)}</div>` : ''}
+          <div class="modal-badges">${fmtBadge}${vhsBadge}</div>
+          <div class="modal-genres">${(movie.genres || []).map(g => `<span class="genre-pill">${escHtml(g)}</span>`).join('')}</div>
+          <div class="modal-meta-row">
+            ${movie.year ? `<div class="modal-meta-item"><div class="modal-meta-label">Year</div><div class="modal-meta-value">${movie.year}</div></div>` : ''}
+            ${movie.rating ? `<div class="modal-meta-item"><div class="modal-meta-label">TMDB</div><div class="modal-rating-big">★ ${movie.rating}</div></div>` : ''}
+            ${movie.runtime ? `<div class="modal-meta-item"><div class="modal-meta-label">Runtime</div><div class="modal-meta-value">${movie.runtime} min</div></div>` : ''}
+            ${movie.director ? `<div class="modal-meta-item"><div class="modal-meta-label">Director</div><div class="modal-meta-value">${escHtml(movie.director)}</div></div>` : ''}
+            ${seriesHTML}
+          </div>
+          ${movie.cast?.length ? `<div style="margin-bottom:16px"><div class="modal-meta-label" style="margin-bottom:6px">Cast</div><div style="font-size:0.82rem;color:var(--text-muted)">${movie.cast.join(' · ')}</div></div>` : ''}
+        </div>
+        ${movie.overview ? `<div class="modal-overview">"${escHtml(movie.overview)}"</div>` : ''}
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    ${discStrip}
+    <div class="modal-actions">
+      <button class="btn-watch-toggle ${isWatched ? 'watched' : ''}" data-movie-id="${escHtml(String(movie.id))}" onclick="handleWatchToggle(this)">
+        ${isWatched ? '✓ Marked as Watched' : '○ Mark as Watched'}
+      </button>
+      ${movie.tmdbId ? `<a class="btn-tmdb-link" href="https://www.themoviedb.org/movie/${movie.tmdbId}" target="_blank" rel="noopener">View on TMDB ↗</a>` : ''}
+    </div>`;
+
+  document.getElementById('modal-overlay').classList.add('active');
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.remove('active'); applyFilters(); }
+function handleModalOverlayClick(e) { if (e.target === document.getElementById('modal-overlay')) closeModal(); }
+
+// ── WATCHED ───────────────────────────────────────────────────────────────
+function handleWatchToggle(btn) { toggleWatched(btn.getAttribute('data-movie-id'), btn); }
+async function toggleWatched(id, btn) {
+  const strId = String(id);
+  const nowWatched = !watchedSet.has(strId);
+  if (nowWatched) watchedSet.add(strId); else watchedSet.delete(strId);
+  if (btn) {
+    btn.classList.toggle('watched', watchedSet.has(strId));
+    btn.textContent = watchedSet.has(strId) ? '✓ Marked as Watched' : '○ Mark as Watched';
+  }
+  updateStats();
+  if (!document.getElementById('modal-overlay').classList.contains('active')) applyFilters();
+  try { await sbSetWatched(strId, watchedSet.has(strId)); } catch(e) { console.warn('Watched sync failed', e); }
+}
+
+// ── SERIES-AWARE RANDOM PICKER ────────────────────────────────────────────
+function buildCollectionGroups() {
+  const groups = {};
+  movies.filter(m => !m.notFound && m.collectionId).forEach(m => {
+    if (!groups[m.collectionId]) groups[m.collectionId] = { name: m.collectionName, movies: [] };
+    groups[m.collectionId].movies.push(m);
+  });
+  Object.values(groups).forEach(g => {
+    g.movies.sort((a, b) => (a.collectionOrder || 999) - (b.collectionOrder || 999));
+  });
+  return groups;
+}
+
+function pickRandom() {
+  const groups = buildCollectionGroups();
+  const pool = [];
+
+  // Add standalone unwatched movies (not in any tracked collection)
+  movies.filter(m => !m.notFound && !watchedSet.has(m.id) && !m.collectionId).forEach(m => pool.push({ movie: m, context: null }));
+
+  // Add movies not in TMDB collections but on shelf
+  movies.filter(m => !m.notFound && !watchedSet.has(m.id) && m.collectionId && !groups[m.collectionId]).forEach(m => pool.push({ movie: m, context: null }));
+
+  // For each collection, add only the FIRST unwatched entry in order
+  for (const [collId, group] of Object.entries(groups)) {
+    const firstUnwatched = group.movies.find(m => !watchedSet.has(m.id));
+    if (firstUnwatched) pool.push({ movie: firstUnwatched, context: group });
+  }
+
+  if (!pool.length) { alert('You\'ve watched everything on your shelf! 🎉'); return; }
+
+  const picked = pool[Math.floor(Math.random() * pool.length)];
+  currentRandomMovie = picked.movie;
+  showRandomModal(picked.movie, picked.context);
+}
+
+function rollAgain() {
+  const groups = buildCollectionGroups();
+  const pool = [];
+  movies.filter(m => !m.notFound && !watchedSet.has(m.id) && !m.collectionId).forEach(m => pool.push({ movie: m, context: null }));
+  movies.filter(m => !m.notFound && !watchedSet.has(m.id) && m.collectionId && !groups[m.collectionId]).forEach(m => pool.push({ movie: m, context: null }));
+  for (const [collId, group] of Object.entries(groups)) {
+    const first = group.movies.find(m => !watchedSet.has(m.id));
+    if (first) pool.push({ movie: first, context: group });
+  }
+  if (!pool.length) return;
+  const picked = pool[Math.floor(Math.random() * pool.length)];
+  currentRandomMovie = picked.movie;
+  showRandomModal(picked.movie, picked.context);
+}
+
+function showRandomModal(movie, collectionContext) {
+  const posterWrap = document.getElementById('random-poster-wrap');
+  posterWrap.innerHTML = movie.poster
+    ? `<img class="random-poster" src="${movie.poster}" alt="${escHtml(movie.title)}" onerror="this.outerHTML='<div class=\\'random-poster-ph\\'>🎞</div>'">`
+    : `<div class="random-poster-ph">🎞</div>`;
+
+  const seriesTag = document.getElementById('random-series-tag');
+  if (collectionContext && movie.collectionOrder) {
+    const owned = collectionContext.movies.length;
+    seriesTag.style.display = 'block';
+    seriesTag.innerHTML = `Film <strong>${movie.collectionOrder}</strong> of ${owned} · ${escHtml(collectionContext.name)}`;
+  } else if (collectionContext) {
+    seriesTag.style.display = 'block';
+    seriesTag.innerHTML = `Part of <strong>${escHtml(collectionContext.name)}</strong>`;
+  } else {
+    seriesTag.style.display = 'none';
+  }
+
+  document.getElementById('random-title').textContent = movie.title;
+  document.getElementById('random-meta').textContent = [
+    movie.year,
+    movie.director ? `Dir. ${movie.director}` : '',
+    movie.rating ? `★ ${movie.rating}` : '',
+    movie.runtime ? `${movie.runtime} min` : ''
+  ].filter(Boolean).join(' · ');
+
+  const discEl = document.getElementById('random-disc');
+  if (movie.boxSet) {
+    discEl.style.display = 'block';
+    discEl.innerHTML = `📀 Find this disc in: <strong>${escHtml(movie.boxSet)}</strong>`;
+  } else {
+    discEl.style.display = 'none';
+  }
+
+  document.getElementById('random-overlay').classList.add('active');
+}
+
+function closeRandom() { document.getElementById('random-overlay').classList.remove('active'); }
+async function watchRandomNow() {
+  if (!currentRandomMovie) return;
+  watchedSet.add(currentRandomMovie.id);
+  updateStats(); applyFilters(); closeRandom();
+  try { await sbSetWatched(currentRandomMovie.id, true); } catch(e) { console.warn('Watched sync failed', e); }
+}
+
+// ── FIX MODAL ─────────────────────────────────────────────────────────────
+let fixTargetId = null;
+function openFixModal(movieId) {
+  fixTargetId = movieId;
+  const movie = movies.find(m => m.id === movieId);
+  if (!movie) return;
+  document.getElementById('fix-movie-name').textContent = movie.title || movie.searchTitle;
+  document.getElementById('fix-title-input').value = movie.searchTitle || movie.title || '';
+  document.getElementById('fix-tmdbid-input').value = '';
+  document.getElementById('fix-format-select').value = movie.format || 'Blu-ray';
+  document.getElementById('fix-boxset-input').value = movie.boxSet || '';
+  document.getElementById('fix-vhs-check').checked = movie.hasVHS || false;
+  document.getElementById('fix-status').textContent = '';
+  document.getElementById('fix-overlay').classList.add('active');
+}
+function closeFixModal() { document.getElementById('fix-overlay').classList.remove('active'); fixTargetId = null; }
+function handleFixOverlayClick(e) { if (e.target === document.getElementById('fix-overlay')) closeFixModal(); }
+function setFixStatus(msg, isError) {
+  const el = document.getElementById('fix-status');
+  el.style.color = isError ? 'var(--accent2)' : 'var(--text-muted)';
+  el.innerHTML = msg;
+}
+
+async function fixByTitle() {
+  if (!apiKey) { setFixStatus('No API key set.', true); return; }
+  const title = document.getElementById('fix-title-input').value.trim();
+  if (!title) { setFixStatus('Enter a title to search.', true); return; }
+  setFixStatus('<span class="fix-spinner"></span>Searching…');
+  try {
+    const movie = await fetchMovieForShelf(title, '');
+    if (!movie) { setFixStatus('No results found. Try TMDB ID instead.', true); return; }
+    await applyMovieFix(movie);
+  } catch(e) { setFixStatus('Error. Check your API key.', true); }
+}
+
+async function fixByTmdbId() {
+  if (!apiKey) { setFixStatus('No API key set.', true); return; }
+  const rawId = document.getElementById('fix-tmdbid-input').value.trim();
+  if (!rawId || isNaN(parseInt(rawId))) { setFixStatus('Enter a valid TMDB ID.', true); return; }
+  setFixStatus('<span class="fix-spinner"></span>Fetching…');
+  try {
+    const detail = await fetchMovieDetail(parseInt(rawId));
+    if (!detail || detail.status_code === 34) { setFixStatus('Movie not found.', true); return; }
+    const fakeResult = { id: detail.id, title: detail.title, original_title: detail.original_title, release_date: detail.release_date, overview: detail.overview, poster_path: detail.poster_path, vote_average: detail.vote_average, vote_count: detail.vote_count, original_language: detail.original_language };
+    const movie = buildMovieObject(fakeResult, detail, detail.title);
+    if (movie.collectionId) {
+      const order = await fetchCollectionOrder(movie.collectionId);
+      movie.collectionOrder = order[movie.tmdbId] || null;
+    }
+    await applyMovieFix(movie);
+  } catch(e) { setFixStatus('Error fetching.', true); }
+}
+
+async function saveDiscInfo() {
+  const idx = movies.findIndex(m => m.id === fixTargetId);
+  if (idx === -1) return;
+  movies[idx].format = document.getElementById('fix-format-select').value;
+  movies[idx].boxSet = document.getElementById('fix-boxset-input').value.trim() || null;
+  movies[idx].hasVHS = document.getElementById('fix-vhs-check').checked;
+  try {
+    await sbSaveMovie(movies[idx]);
+    setFixStatus('✓ Disc info saved');
+    buildFilterOptions(); applyFilters();
+    setTimeout(closeFixModal, 1000);
+  } catch(e) { setFixStatus('Error saving.', true); }
+}
+
+async function applyMovieFix(newData) {
+  const idx = movies.findIndex(m => m.id === fixTargetId);
+  if (idx === -1) return;
+  const old = movies[idx];
+  // Preserve disc-specific fields
+  newData.format = old.format;
+  newData.hasVHS = old.hasVHS;
+  newData.boxSet = old.boxSet;
+  newData.dateAdded = old.dateAdded;
+  newData.searchTitle = old.searchTitle || old.title;
+  // Migrate watched state if ID changed
+  if (newData.id !== fixTargetId) {
+    const wasWatched = watchedSet.has(fixTargetId);
+    if (wasWatched) { watchedSet.delete(fixTargetId); watchedSet.add(newData.id); }
+    try { await sbDeleteMovie(fixTargetId); if (wasWatched) { await sbSetWatched(fixTargetId, false); await sbSetWatched(newData.id, true); } } catch(e) {}
+  }
+  movies[idx] = newData;
+  try { await sbSaveMovie(newData); } catch(e) {}
+  buildFilterOptions(); applyFilters(); updateStats();
+  setFixStatus(`✓ Updated to "${newData.title}" (${newData.year})`);
+  setTimeout(closeFixModal, 1200);
+}
+
+async function removeMovie() {
+  if (!fixTargetId) return;
+  const movie = movies.find(m => m.id === fixTargetId);
+  if (!confirm(`Remove "${movie?.title || 'this film'}" from your shelf?`)) return;
+  movies = movies.filter(m => m.id !== fixTargetId);
+  watchedSet.delete(fixTargetId);
+  try { await sbDeleteMovie(fixTargetId); await sbSetWatched(fixTargetId, false); } catch(e) {}
+  buildFilterOptions(); applyFilters(); updateStats(); closeFixModal();
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────
+function escHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeModal(); closeRandom(); closeFixModal(); }
+});
+</script>
+</body>
+</html>
