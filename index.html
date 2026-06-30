@@ -81,6 +81,13 @@
   .drop-label strong { color: var(--accent); }
   .import-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 10px; text-align: left; font-style: italic; }
 
+
+  /* BOX SET BANNER */
+  #boxset-banner { display: flex; align-items: center; gap: 10px; background: rgba(232,197,71,0.08); border: 1px solid rgba(232,197,71,0.3); border-radius: 2px; padding: 10px 14px; margin-bottom: 16px; font-size: 0.78rem; color: var(--accent); letter-spacing: 0.05em; }
+  #boxset-banner span { flex: 1; font-weight: 500; }
+  #boxset-banner button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0 2px; }
+  #boxset-banner button:hover { color: var(--text); }
+
   /* ADD BY TITLE */
   .search-row { display: flex; gap: 10px; margin-bottom: 16px; }
   .search-row input[type="text"] { flex: 1; }
@@ -501,6 +508,10 @@
 
     <!-- ADD BY TITLE TAB -->
     <div class="import-section" id="tab-title">
+      <div id="boxset-banner" style="display:none">
+        📦 <span id="boxset-banner-name"></span>
+        <button onclick="clearBoxSetMode()" title="Exit box set mode">✕</button>
+      </div>
       <div class="search-row">
         <input type="text" id="title-search-input" placeholder="Search for a film… e.g. Heat 1995" onkeydown="if(event.key==='Enter')searchTMDB()">
         <button class="btn btn-accent" onclick="searchTMDB()" style="white-space:nowrap">Search TMDB</button>
@@ -743,6 +754,7 @@ let currentSort = 'title';
 let currentStatusFilter = 'all';
 let currentRandomMovie = null;
 let selectedTMDBResult = null;
+let boxSetMode = null; // {boxSet, label, format} or null
 let apiKey = '';
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
@@ -909,6 +921,7 @@ function saveApiKey() {
 
 // ── TABS ───────────────────────────────────────────────────────────────────
 function switchTab(name, btn) {
+  if (name !== 'title') clearBoxSetMode();
   document.querySelectorAll('.import-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.import-section').forEach(s => s.classList.remove('active'));
   btn.classList.add('active');
@@ -918,7 +931,7 @@ function switchTab(name, btn) {
   if (name === 'clz') {
     actionsDiv.innerHTML = '<button class="btn btn-accent" id="clz-import-btn" style="width:100%;padding:16px;font-size:0.85rem;letter-spacing:0.15em" onclick="startCLZImport()">Build My Shelf →</button>';
   } else if (name === 'title') {
-    actionsDiv.innerHTML = '<button class="btn btn-accent" id="add-film-btn" style="width:100%;padding:16px;font-size:0.85rem;letter-spacing:0.15em" onclick="addSelectedFilm()" disabled>Add to Shelf →</button>';
+    actionsDiv.innerHTML = '<div style="display:flex;gap:10px"><button class="btn btn-ghost" id="add-film-btn" style="flex:1;padding:16px;font-size:0.85rem;letter-spacing:0.15em" onclick="addSelectedFilm(false)" disabled>Add to Shelf →</button><button class="btn btn-accent" id="add-boxset-btn" style="flex:2;padding:16px;font-size:0.85rem;letter-spacing:0.15em;white-space:nowrap" onclick="addSelectedFilm(true)" disabled>Add &amp; Stay in Box Set →</button></div>';
   } else {
     actionsDiv.innerHTML = '<button class="btn btn-accent" id="manual-add-btn" style="width:100%;padding:16px;font-size:0.85rem;letter-spacing:0.15em" onclick="saveManualFilm()">Add to Shelf →</button>';
   }
@@ -1339,10 +1352,19 @@ function selectTMDBResult(result, el) {
   selectedTMDBResult = result;
   document.getElementById('add-film-title-label').textContent = result.title;
   document.getElementById('add-film-form').style.display = 'block';
-  document.getElementById('add-boxset-input').value = '';
   document.getElementById('add-vhs-check').checked = false;
+  // Pre-fill from box set mode if active, otherwise clear
+  if (boxSetMode) {
+    document.getElementById('add-boxset-input').value = boxSetMode.boxSet || '';
+    document.getElementById('add-format-select').value = boxSetMode.format || 'Blu-ray';
+    document.getElementById('add-label-select').value = boxSetMode.label || '';
+  } else {
+    document.getElementById('add-boxset-input').value = '';
+  }
   const btn = document.getElementById('add-film-btn');
   if (btn) btn.disabled = false;
+  const bsBtn = document.getElementById('add-boxset-btn');
+  if (bsBtn) bsBtn.disabled = false;
 }
 
 
@@ -1431,7 +1453,13 @@ async function saveManualFilm() {
   }
 }
 
-async function addSelectedFilm() {
+
+function clearBoxSetMode() {
+  boxSetMode = null;
+  const banner = document.getElementById('boxset-banner');
+  if (banner) banner.style.display = 'none';
+}
+async function addSelectedFilm(stayInBoxSet = false) {
   if (!selectedTMDBResult) return;
   if (!apiKey) { alert('API key needed.'); return; }
 
@@ -1469,12 +1497,36 @@ async function addSelectedFilm() {
     movies.push(movie);
 
     hideProgress();
-    showApp();
-    // Brief flash to find the newly added film
-    setTimeout(() => {
-      document.getElementById('search-input').value = movie.title;
-      applyFilters();
-    }, 300);
+
+    if (stayInBoxSet) {
+      // Enter / stay in box set mode — capture current values, clear search
+      boxSetMode = { boxSet: boxSet, label: label, format: format };
+      const banner = document.getElementById('boxset-banner');
+      if (banner) {
+        document.getElementById('boxset-banner-name').textContent = boxSet || '(unnamed box set)';
+        banner.style.display = 'flex';
+      }
+      // Clear search and results for next film
+      selectedTMDBResult = null;
+      document.getElementById('title-search-input').value = '';
+      document.getElementById('title-search-status').textContent = '';
+      const resultsEl = document.getElementById('tmdb-results');
+      resultsEl.style.display = 'none';
+      resultsEl.innerHTML = '';
+      document.getElementById('add-film-form').style.display = 'none';
+      const btn = document.getElementById('add-film-btn');
+      if (btn) btn.disabled = true;
+      const bsBtn = document.getElementById('add-boxset-btn');
+      if (bsBtn) bsBtn.disabled = true;
+    } else {
+      // Normal add — exit box set mode, go back to grid
+      boxSetMode = null;
+      showApp();
+      setTimeout(() => {
+        document.getElementById('search-input').value = movie.title;
+        applyFilters();
+      }, 300);
+    }
   } catch(e) {
     hideProgress();
     alert('Error adding film. Check your API key and connection.');
