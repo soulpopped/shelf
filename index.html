@@ -931,7 +931,7 @@ function switchTab(name, btn) {
   if (name === 'clz') {
     actionsDiv.innerHTML = '<button class="btn btn-accent" id="clz-import-btn" style="width:100%;padding:16px;font-size:0.85rem;letter-spacing:0.15em" onclick="startCLZImport()">Build My Shelf →</button>';
   } else if (name === 'title') {
-    actionsDiv.innerHTML = '<div style="display:flex;gap:10px"><button class="btn btn-ghost" id="add-film-btn" style="flex:1;padding:16px;font-size:0.85rem;letter-spacing:0.15em" onclick="addSelectedFilm(false)" disabled>Add to Shelf →</button><button class="btn btn-accent" id="add-boxset-btn" style="flex:2;padding:16px;font-size:0.85rem;letter-spacing:0.15em;white-space:nowrap" onclick="addSelectedFilm(true)" disabled>Add &amp; Stay in Box Set →</button></div>';
+    actionsDiv.innerHTML = '<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-accent" id="add-film-btn" style="flex:2;min-width:160px;padding:16px;font-size:0.85rem;letter-spacing:0.15em" onclick="addSelectedFilm(false)" disabled>Add to Shelf →</button><button class="btn btn-ghost" id="add-boxset-btn" style="flex:3;min-width:220px;padding:16px;font-size:0.85rem;letter-spacing:0.15em;white-space:nowrap" onclick="addSelectedFilm(true)" disabled>Add &amp; Stay in Box Set →</button></div>';
   } else {
     actionsDiv.innerHTML = '<button class="btn btn-accent" id="manual-add-btn" style="width:100%;padding:16px;font-size:0.85rem;letter-spacing:0.15em" onclick="saveManualFilm()">Add to Shelf →</button>';
   }
