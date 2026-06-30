@@ -158,6 +158,8 @@
   .fmt-vhs { background: #1a3a1a; color: #6abf6a; border: 1px solid #2a5a2a; }
   .fmt-other { background: var(--surface2); color: var(--text-dim); border: 1px solid var(--border); }
   .vhs-note { font-size: 0.62rem; color: var(--text-dim); font-style: italic; }
+  .label-logo { height: 16px; width: auto; vertical-align: middle; opacity: 0.88; display: inline-block; }
+  .label-logo-modal { height: 22px; width: auto; vertical-align: middle; opacity: 0.92; display: inline-block; }
   .series-link { background: none; border: none; color: var(--accent); cursor: pointer; font-family: inherit; font-size: inherit; padding: 0; text-decoration: underline; text-decoration-color: rgba(232,197,71,0.4); text-underline-offset: 3px; transition: text-decoration-color 0.15s; }
   .series-link:hover { text-decoration-color: var(--accent); }
 
@@ -385,6 +387,21 @@
         </div>
       </div>
       <div class="fix-hint" style="margin-top:6px">Series fields only apply to films that belong to a TMDB collection</div>
+      <div style="margin-top:12px">
+        <div class="add-form-label" style="margin-bottom:6px">Boutique label</div>
+        <select id="fix-label-select" style="width:100%">
+          <option value="">None</option>
+          <option value="Criterion Collection">Criterion Collection</option>
+          <option value="Vinegar Syndrome">Vinegar Syndrome</option>
+          <option value="Shout Factory / Scream Factory">Shout / Scream Factory</option>
+          <option value="Arrow Video">Arrow Video</option>
+          <option value="Kino Lorber">Kino Lorber</option>
+          <option value="Drafthouse Films">Drafthouse Films</option>
+          <option value="A24">A24</option>
+          <option value="MUBI">MUBI</option>
+          <option value="Oscilloscope">Oscilloscope</option>
+        </select>
+      </div>
       <div class="vhs-row" style="margin-top:10px">
         <input type="checkbox" id="fix-vhs-check">
         <label for="fix-vhs-check">📼 Also have on VHS</label>
@@ -497,6 +514,23 @@
             <input type="text" id="add-boxset-input" placeholder="e.g. Alien Anthology">
           </div>
         </div>
+        <div class="add-form-row" style="margin-top:4px">
+          <div class="add-form-group" style="flex:1">
+            <div class="add-form-label">Label (optional)</div>
+            <select id="add-label-select" style="min-width:unset;width:100%">
+              <option value="">None</option>
+              <option value="Criterion Collection">Criterion Collection</option>
+              <option value="Vinegar Syndrome">Vinegar Syndrome</option>
+              <option value="Shout Factory / Scream Factory">Shout / Scream Factory</option>
+              <option value="Arrow Video">Arrow Video</option>
+              <option value="Kino Lorber">Kino Lorber</option>
+              <option value="Drafthouse Films">Drafthouse Films</option>
+              <option value="A24">A24</option>
+              <option value="MUBI">MUBI</option>
+              <option value="Oscilloscope">Oscilloscope</option>
+            </select>
+          </div>
+        </div>
         <div class="vhs-row">
           <input type="checkbox" id="add-vhs-check">
           <label for="add-vhs-check">📼 Also have this on VHS</label>
@@ -521,7 +555,7 @@
   <div id="filter-bar">
     <div class="filter-group filter-search">
       <div class="filter-label">Search</div>
-      <input type="text" id="search-input" placeholder="Title, director, actor…" oninput="applyFilters()">
+      <input type="text" id="search-input" placeholder="Title, director, actor…" oninput="searchReset()">
     </div>
     <div class="filter-group">
       <div class="filter-label">Genre</div>
@@ -539,6 +573,21 @@
         <option value="Blu-ray">Blu-ray</option>
         <option value="DVD">DVD</option>
         <option value="VHS">VHS</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Label</div>
+      <select id="filter-label" onchange="applyFilters()">
+        <option value="">All Labels</option>
+        <option value="Criterion Collection">Criterion Collection</option>
+        <option value="Vinegar Syndrome">Vinegar Syndrome</option>
+        <option value="Shout Factory / Scream Factory">Shout / Scream Factory</option>
+        <option value="Arrow Video">Arrow Video</option>
+        <option value="Kino Lorber">Kino Lorber</option>
+        <option value="Drafthouse Films">Drafthouse Films</option>
+        <option value="A24">A24</option>
+        <option value="MUBI">MUBI</option>
+        <option value="Oscilloscope">Oscilloscope</option>
       </select>
     </div>
     <div class="filter-group">
@@ -592,6 +641,42 @@ const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_IMG = 'https://image.tmdb.org/t/p/w342';
 const TMDB_IMG_LG = 'https://image.tmdb.org/t/p/w500';
 const STORAGE_KEY_APIKEY = 'shelf_apikey';
+
+// ── LABEL LOGOS ────────────────────────────────────────────────────────────
+const LABEL_LOGOS = {
+  'Criterion Collection':        'label-criterion.png',
+  'Vinegar Syndrome':            'label-vinegar-syndrome.png',
+  'Shout Factory / Scream Factory': 'label-shout-factory.png',
+  'Arrow Video':                 'label-arrow-video.png',
+  'Kino Lorber':                 'label-kino-lorber.png',
+  'Drafthouse Films':            'label-drafthouse.png',
+  'A24':                         'label-a24.png',
+  'MUBI':                        'label-mubi.png',
+  'Oscilloscope':                'label-oscilloscope.png',
+};
+
+function labelLogoHTML(label, size) {
+  if (!label || !LABEL_LOGOS[label]) return '';
+  const url = `${SB_URL}/storage/v1/object/public/shelf-posters/${LABEL_LOGOS[label]}`;
+  const cls = size === 'modal' ? 'label-logo-modal' : 'label-logo';
+  return `<img src="${url}" class="${cls}" alt="${escHtml(label)}" title="${escHtml(label)}" onerror="this.style.display='none'">`;
+}
+
+function detectLabelFromDistributor(distributor) {
+  if (!distributor) return null;
+  const d = distributor.toLowerCase();
+  if (d.includes('criterion')) return 'Criterion Collection';
+  if (d.includes('vinegar syndrome')) return 'Vinegar Syndrome';
+  if (d.includes('scream factory')) return 'Shout Factory / Scream Factory';
+  if (d.includes('shout')) return 'Shout Factory / Scream Factory';
+  if (d.includes('arrow')) return 'Arrow Video';
+  if (d.includes('kino lorber') || d.includes('kino video')) return 'Kino Lorber';
+  if (d.includes('drafthouse')) return 'Drafthouse Films';
+  if (d.includes('a24')) return 'A24';
+  if (d.includes('mubi')) return 'MUBI';
+  if (d.includes('oscilloscope')) return 'Oscilloscope';
+  return null;
+}
 
 // ── SUPABASE ───────────────────────────────────────────────────────────────
 const SB_URL = 'https://lpfixzzzboopszwueidp.supabase.co';
@@ -954,6 +1039,7 @@ async function startCLZImport() {
         movie.format = normalizeFormat(entry.format);
         movie.hasVHS = record.hasVHS;
         movie.boxSet = record.boxSetSources.length > 0 ? record.boxSetSources[0] : null;
+        movie.label = detectLabelFromDistributor(entry.distributor) || null;
         movie.searchTitle = titleStr;
         if (movie.collectionId) {
           if (!collectionQueue.has(movie.collectionId)) collectionQueue.set(movie.collectionId, []);
@@ -1065,6 +1151,7 @@ function buildMovieObject(result, detail, searchTitle) {
     format: 'Blu-ray', // overridden by caller
     hasVHS: false,     // overridden by caller
     boxSet: null,      // overridden by caller
+    label: null,       // overridden by caller
     dateAdded: new Date().toISOString(),
     notFound: false
   };
@@ -1155,6 +1242,7 @@ async function addSelectedFilm() {
   const format = document.getElementById('add-format-select').value;
   const boxSet = document.getElementById('add-boxset-input').value.trim() || null;
   const hasVHS = document.getElementById('add-vhs-check').checked;
+  const label = document.getElementById('add-label-select').value || null;
   const r = selectedTMDBResult;
 
   // Check for duplicate
@@ -1171,6 +1259,7 @@ async function addSelectedFilm() {
     movie.format = format;
     movie.hasVHS = hasVHS;
     movie.boxSet = boxSet;
+    movie.label = label;
 
     if (movie.collectionId) {
       setProgress('Fetching series info…', 60);
@@ -1302,6 +1391,7 @@ function applyFilters() {
   const genre = document.getElementById('filter-genre').value;
   const decade = document.getElementById('filter-decade').value;
   const format = document.getElementById('filter-format').value;
+  const label = document.getElementById('filter-label').value;
   const collection = document.getElementById('filter-collection').value;
   const runtime = parseInt(document.getElementById('filter-runtime').value) || 300;
 
@@ -1316,6 +1406,7 @@ function applyFilters() {
     if (genre && !m.genres?.includes(genre)) return false;
     if (decade && Math.floor(parseInt(m.year) / 10) * 10 !== parseInt(decade)) return false;
     if (format && m.format !== format) return false;
+    if (label && m.label !== label) return false;
     if (collection && m.collectionId !== collection) return false;
     if (runtime < 300 && m.runtime && m.runtime > runtime) return false;
     return matchStatus(m);
@@ -1377,6 +1468,7 @@ function resetFilters() {
   document.getElementById('filter-genre').value = '';
   document.getElementById('filter-decade').value = '';
   document.getElementById('filter-format').value = '';
+  document.getElementById('filter-label').value = '';
   document.getElementById('filter-collection').value = '';
   document.getElementById('filter-runtime').value = '300';
   updateRuntimeLabel();
@@ -1422,6 +1514,7 @@ function renderGrid() {
           ${movie.rating ? `<span class="card-rating">★ ${movie.rating}</span>` : ''}
           ${fmtBadgeHTML(movie.format)}
         </div>
+        ${movie.label ? `<div style="margin-top:6px">${labelLogoHTML(movie.label, 'card')}</div>` : ''}
       </div>`;
     grid.appendChild(card);
   });
@@ -1445,9 +1538,10 @@ function openModal(movie) {
     ? `<img class="modal-poster" src="${movie.posterLg || movie.poster}" alt="${escHtml(movie.title)}" onerror="this.outerHTML='<div class=\\'modal-poster-placeholder\\'>🎞</div>'">`
     : `<div class="modal-poster-placeholder">🎞</div>`;
 
-  // Format badge
+  // Format badge + label logo
   const fmtBadge = fmtBadgeHTML(movie.format);
   const vhsBadge = movie.hasVHS ? `<span class="vhs-note">📼 also on VHS</span>` : '';
+  const labelBadge = movie.label ? labelLogoHTML(movie.label, 'modal') : '';
 
   // Series context
   let seriesHTML = '';
@@ -1477,7 +1571,7 @@ function openModal(movie) {
         <div>
           <div class="modal-title">${escHtml(movie.title)}</div>
           ${movie.originalTitle && movie.originalTitle !== movie.title ? `<div class="modal-original-title">${escHtml(movie.originalTitle)}</div>` : ''}
-          <div class="modal-badges">${fmtBadge}${vhsBadge}</div>
+          <div class="modal-badges">${fmtBadge}${vhsBadge}${labelBadge}</div>
           <div class="modal-genres">${(movie.genres || []).map(g => `<span class="genre-pill">${escHtml(g)}</span>`).join('')}</div>
           <div class="modal-meta-row">
             ${movie.year ? `<div class="modal-meta-item"><div class="modal-meta-label">Year</div><div class="modal-meta-value">${movie.year}</div></div>` : ''}
@@ -1666,6 +1760,7 @@ function openFixModal(movieId) {
   document.getElementById('fix-boxset-input').value = movie.boxSet || '';
   document.getElementById('fix-collection-order').value = movie.collectionOrder || '';
   document.getElementById('fix-collection-total').value = movie.collectionTotal || '';
+  document.getElementById('fix-label-select').value = movie.label || '';
   document.getElementById('fix-vhs-check').checked = movie.hasVHS || false;
   document.getElementById('fix-status').textContent = '';
   document.getElementById('fix-art-url').value = '';
@@ -1727,6 +1822,7 @@ async function saveDiscInfo() {
   const totalVal = parseInt(document.getElementById('fix-collection-total').value);
   if (!isNaN(orderVal) && orderVal > 0) movies[idx].collectionOrder = orderVal;
   if (!isNaN(totalVal) && totalVal > 0) movies[idx].collectionTotal = totalVal;
+  movies[idx].label = document.getElementById('fix-label-select').value || null;
   try {
     await sbSaveMovie(movies[idx]);
     setFixStatus('✓ Disc info saved');
@@ -1837,6 +1933,25 @@ async function removeCoverArt() {
 }
 
 // ── UTILS ─────────────────────────────────────────────────────────────────
+// Search resets all filters on first keystroke (prevents "trapped in series" problem)
+function searchReset() {
+  const val = document.getElementById('search-input').value;
+  if (val.length === 1) {
+    // First character typed — blow away all active filters
+    document.getElementById('filter-genre').value = '';
+    document.getElementById('filter-decade').value = '';
+    document.getElementById('filter-format').value = '';
+    document.getElementById('filter-label').value = '';
+    document.getElementById('filter-collection').value = '';
+    document.getElementById('filter-runtime').value = '300';
+    updateRuntimeLabel();
+    document.querySelectorAll('[data-status]').forEach(b => b.classList.remove('active'));
+    document.querySelector('[data-status="all"]').classList.add('active');
+    currentStatusFilter = 'all';
+  }
+  applyFilters();
+}
+
 // Strip leading articles for alphabetical filing (The Godfather → Godfather)
 function sortTitle(t) {
   return (t || '').replace(/^(the|a|an)\s+/i, '').trim();
