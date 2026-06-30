@@ -1351,23 +1351,32 @@ function buildFilterOptions() {
   const decades = new Set();
   const collections = new Map(); // id → name
 
+  const collectionCounts = new Map(); // collectionId → count of owned films
   movies.filter(m => !m.notFound).forEach(m => {
     m.genres?.forEach(g => genres.add(g));
     if (m.year && m.year !== '—') decades.add(Math.floor(parseInt(m.year) / 10) * 10);
-    if (m.collectionId && m.collectionName) collections.set(m.collectionId, m.collectionName);
+    if (m.collectionId && m.collectionName) {
+      collections.set(m.collectionId, m.collectionName);
+      collectionCounts.set(m.collectionId, (collectionCounts.get(m.collectionId) || 0) + 1);
+    }
   });
 
   populateSelect('filter-genre', [...genres].sort());
   populateSelect('filter-decade', [...decades].sort((a,b)=>b-a).map(d=>({value:d,label:`${d}s`})));
 
-  // Collections dropdown
+  // Collections dropdown — only series with 2+ owned films, "Collection" stripped from display
   const collSel = document.getElementById('filter-collection');
   const prevColl = collSel.value;
   while (collSel.options.length > 1) collSel.remove(1);
-  [...collections.entries()].sort((a,b)=>a[1].localeCompare(b[1])).forEach(([id, name]) => {
-    const opt = document.createElement('option');
-    opt.value = id; opt.textContent = name; collSel.appendChild(opt);
-  });
+  [...collections.entries()]
+    .filter(([id]) => (collectionCounts.get(id) || 0) >= 2)
+    .sort((a, b) => displayCollName(a[1]).localeCompare(displayCollName(b[1])))
+    .forEach(([id, name]) => {
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = displayCollName(name);
+      collSel.appendChild(opt);
+    });
   if (prevColl) collSel.value = prevColl;
 }
 
@@ -1514,7 +1523,6 @@ function renderGrid() {
           ${movie.rating ? `<span class="card-rating">★ ${movie.rating}</span>` : ''}
           ${fmtBadgeHTML(movie.format)}
         </div>
-        ${movie.label ? `<div style="margin-top:6px">${labelLogoHTML(movie.label, 'card')}</div>` : ''}
       </div>`;
     grid.appendChild(card);
   });
@@ -1550,10 +1558,10 @@ function openModal(movie) {
     const collMovies = movies.filter(m => m.collectionId === movie.collectionId);
     const total = movie.collectionTotal || collMovies.length;
     const collId = escHtml(String(movie.collectionId));
-    seriesHTML = `<div class="modal-meta-item"><div class="modal-meta-label">Series</div><div class="modal-meta-value" style="color:var(--accent)">Film ${movie.collectionOrder} of ${total} · <button class="series-link" onclick="filterToCollection('${collId}')">${escHtml(movie.collectionName)} ↗</button></div></div>`;
+    seriesHTML = `<div class="modal-meta-item"><div class="modal-meta-label">Series</div><div class="modal-meta-value" style="color:var(--accent)">Film ${movie.collectionOrder} of ${total} · <button class="series-link" onclick="filterToCollection('${collId}')">${escHtml(displayCollName(movie.collectionName))} ↗</button></div></div>`;
   } else if (movie.collectionName) {
     const collId = escHtml(String(movie.collectionId || ''));
-    seriesHTML = `<div class="modal-meta-item"><div class="modal-meta-label">Series</div><div class="modal-meta-value" style="color:var(--accent)">${collId ? `<button class="series-link" onclick="filterToCollection('${collId}')">${escHtml(movie.collectionName)} ↗</button>` : escHtml(movie.collectionName)}</div></div>`;
+    seriesHTML = `<div class="modal-meta-item"><div class="modal-meta-label">Series</div><div class="modal-meta-value" style="color:var(--accent)">${collId ? `<button class="series-link" onclick="filterToCollection('${collId}')">${escHtml(displayCollName(movie.collectionName))} ↗</button>` : escHtml(displayCollName(movie.collectionName))}</div></div>`;
   }
 
   // Disc location strip
@@ -1686,10 +1694,10 @@ function showRandomModal(movie, collectionContext) {
     const collId = escHtml(String(movie.collectionId || ''));
     if (movie.collectionOrder) {
       seriesTag.style.display = 'block';
-      seriesTag.innerHTML = `Film <strong>${movie.collectionOrder}</strong> of ${seriesTotal} · <button class="series-link" style="font-size:inherit" onclick="filterCollectionFromRandom('${collId}')">${escHtml(collectionContext.name)} ↗</button>`;
+      seriesTag.innerHTML = `Film <strong>${movie.collectionOrder}</strong> of ${seriesTotal} · <button class="series-link" style="font-size:inherit" onclick="filterCollectionFromRandom('${collId}')">${escHtml(displayCollName(collectionContext.name))} ↗</button>`;
     } else {
       seriesTag.style.display = 'block';
-      seriesTag.innerHTML = `Part of <button class="series-link" style="font-size:inherit" onclick="filterCollectionFromRandom('${collId}')">${escHtml(collectionContext.name)} ↗</button>`;
+      seriesTag.innerHTML = `Part of <button class="series-link" style="font-size:inherit" onclick="filterCollectionFromRandom('${collId}')">${escHtml(displayCollName(collectionContext.name))} ↗</button>`;
     }
   } else {
     seriesTag.style.display = 'none';
@@ -1950,6 +1958,11 @@ function searchReset() {
     currentStatusFilter = 'all';
   }
   applyFilters();
+}
+
+// Strip trailing "Collection" from TMDB collection names for cleaner display
+function displayCollName(name) {
+  return (name || '').replace(/\s+collection\s*$/i, '').trim();
 }
 
 // Strip leading articles for alphabetical filing (The Godfather → Godfather)
