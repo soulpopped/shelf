@@ -281,7 +281,8 @@
 
   /* MOBILE */
   @media (max-width: 768px) {
-    header { padding: 12px 16px; flex-wrap: wrap; gap: 10px; }
+    header { padding: 12px 16px; flex-wrap: wrap; gap: 10px; position: fixed; top: 0; left: 0; right: 0; }
+    #app.active { padding-top: var(--header-height, 130px); }
     .header-stats { gap: 16px; order: 3; width: 100%; justify-content: center; padding-top: 6px; border-top: 1px solid var(--border); }
     .header-actions { gap: 6px; flex-wrap: wrap; }
     .logo { font-size: 1.8rem; }
@@ -467,6 +468,9 @@
 
 <!-- IMPORT PANEL -->
 <div id="import-panel">
+  <div id="import-back-btn" style="display:none;margin-bottom:24px;text-align:left">
+    <button class="btn btn-ghost" onclick="showApp()" style="font-size:0.7rem;padding:8px 16px">← Back to Collection</button>
+  </div>
   <div class="import-headline">Your <em>Collection,</em><br>All in One Place.</div>
   <div class="import-sub">Import your CLZ library export to get started, or search by title to add new purchases.</div>
 
@@ -1478,6 +1482,11 @@ async function addSelectedFilm() {
   }
 }
 
+
+function updateHeaderHeight() {
+  const h = document.getElementById('main-header').offsetHeight;
+  if (h > 0) document.documentElement.style.setProperty('--header-height', h + 'px');
+}
 // ── SHOW / HIDE PANELS ────────────────────────────────────────────────────
 function showApp() {
   document.getElementById('import-panel').style.display = 'none';
@@ -1486,12 +1495,15 @@ function showApp() {
   buildFilterOptions();
   applyFilters();
   updateStats();
+  requestAnimationFrame(updateHeaderHeight);
 }
 
 function showImport() {
   document.getElementById('import-panel').style.display = 'block';
   document.getElementById('main-header').style.display = 'none';
   document.getElementById('app').classList.remove('active');
+  // Show back button if library already exists
+  document.getElementById('import-back-btn').style.display = movies.length > 0 ? 'block' : 'none';
   // Switch to Add by Title tab when coming from the header
   if (movies.length > 0) {
     const titleTab = document.querySelector('.import-tab:nth-child(2)');
@@ -2175,6 +2187,16 @@ function escHtml(str) {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closeModal(); closeRandom(); closeFixModal(); }
 });
+
+window.addEventListener('resize', updateHeaderHeight);
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && movies.length > 0) {
+    const importPanel = document.getElementById('import-panel');
+    if (importPanel.style.display !== 'none') showApp();
+  }
+});
+
 </script>
 </body>
 </html>
