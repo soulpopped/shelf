@@ -82,6 +82,17 @@
   .import-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 10px; text-align: left; font-style: italic; }
 
 
+
+  /* BARCODE SCANNER */
+  #scan-viewfinder { position: relative; width: 100%; max-width: 380px; margin: 0 auto 16px; aspect-ratio: 4/3; background: #000; border-radius: 2px; overflow: hidden; }
+  #scan-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #scan-reticle { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 70%; height: 28%; border: 2px solid var(--accent); border-radius: 3px; box-shadow: 0 0 0 2000px rgba(0,0,0,0.4); }
+  #scan-reticle::before { content: ''; position: absolute; top: -1px; left: 20%; right: 20%; height: 2px; background: var(--accent); opacity: 0.7; animation: scan-sweep 2s ease-in-out infinite; }
+  @keyframes scan-sweep { 0%,100% { top: 0; opacity: 0.3; } 50% { top: calc(100% - 2px); opacity: 1; } }
+  #scan-status-text { font-size: 0.8rem; color: var(--text-muted); text-align: center; min-height: 20px; margin-bottom: 12px; font-style: italic; }
+  #scan-fallback { background: var(--surface2); border: 1px solid var(--border); border-radius: 2px; padding: 16px; margin-top: 12px; font-size: 0.8rem; color: var(--text-muted); }
+  #scan-fallback .search-row { margin-top: 10px; margin-bottom: 0; }
+
   /* BOX SET BANNER */
   #boxset-banner { display: flex; align-items: center; gap: 10px; background: rgba(232,197,71,0.08); border: 1px solid rgba(232,197,71,0.3); border-radius: 2px; padding: 10px 14px; margin-bottom: 16px; font-size: 0.78rem; color: var(--accent); letter-spacing: 0.05em; }
   #boxset-banner span { flex: 1; font-weight: 500; }
@@ -492,6 +503,7 @@
     <button class="import-tab active" onclick="switchTab('clz', this)">CLZ Export</button>
     <button class="import-tab" onclick="switchTab('title', this)">Add by Title</button>
     <button class="import-tab" onclick="switchTab('manual', this)">Manual Entry</button>
+    <button class="import-tab" onclick="switchTab('scan', this)">📷 Scan</button>
   </div>
 
   <div class="import-content">
@@ -655,6 +667,27 @@
       </div>
 
       <div id="manual-status" class="import-hint" style="margin-top:12px"></div>
+    </div>
+
+    <!-- BARCODE SCAN TAB -->
+    <div class="import-section" id="tab-scan">
+      <div id="scan-ui">
+        <div id="scan-viewfinder">
+          <video id="scan-video" autoplay playsinline muted></video>
+          <div id="scan-reticle"></div>
+        </div>
+        <div id="scan-status-text">Initialising camera…</div>
+        <div style="text-align:center;margin-bottom:8px">
+          <button class="btn btn-ghost" id="scan-retry-btn" onclick="startScan()" style="display:none;font-size:0.75rem;padding:8px 16px">↺ Try Again</button>
+        </div>
+      </div>
+      <div id="scan-fallback" style="display:none">
+        <div>Live scanning unavailable on this browser. Enter the UPC barcode number manually:</div>
+        <div class="search-row">
+          <input type="text" id="scan-upc-input" inputmode="numeric" placeholder="e.g. 025192251917">
+          <button class="btn btn-accent" onclick="lookupUPC(document.getElementById('scan-upc-input').value.trim())" style="white-space:nowrap">Look Up</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -922,6 +955,7 @@ function saveApiKey() {
 // ── TABS ───────────────────────────────────────────────────────────────────
 function switchTab(name, btn) {
   if (name !== 'title') clearBoxSetMode();
+  if (name !== 'scan') stopScan(); // stop camera when leaving scan tab
   document.querySelectorAll('.import-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.import-section').forEach(s => s.classList.remove('active'));
   btn.classList.add('active');
@@ -932,6 +966,9 @@ function switchTab(name, btn) {
     actionsDiv.innerHTML = '<button class="btn btn-accent" id="clz-import-btn" style="width:100%;padding:16px;font-size:0.85rem;letter-spacing:0.15em" onclick="startCLZImport()">Build My Shelf →</button>';
   } else if (name === 'title') {
     actionsDiv.innerHTML = '<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-accent" id="add-film-btn" style="flex:2;min-width:160px;padding:16px;font-size:0.85rem;letter-spacing:0.15em" onclick="addSelectedFilm(false)" disabled>Add to Shelf →</button><button class="btn btn-ghost" id="add-boxset-btn" style="flex:3;min-width:220px;padding:16px;font-size:0.85rem;letter-spacing:0.15em;white-space:nowrap" onclick="addSelectedFilm(true)" disabled>Add &amp; Stay in Box Set →</button></div>';
+  } else if (name === 'scan') {
+    actionsDiv.innerHTML = '';
+    requestAnimationFrame(startScan);
   } else {
     actionsDiv.innerHTML = '<button class="btn btn-accent" id="manual-add-btn" style="width:100%;padding:16px;font-size:0.85rem;letter-spacing:0.15em" onclick="saveManualFilm()">Add to Shelf →</button>';
   }
@@ -1450,6 +1487,96 @@ async function saveManualFilm() {
   } catch(e) {
     statusEl.textContent = '⚠ Error saving — check connection.';
     console.error(e);
+  }
+}
+
+
+// ── BARCODE SCANNER ────────────────────────────────────────────────────────
+let scanStream = null;
+let scanInterval = null;
+
+async function startScan() {
+  const statusEl = document.getElementById('scan-status-text');
+  const retryBtn = document.getElementById('scan-retry-btn');
+  const fallback = document.getElementById('scan-fallback');
+  if (!statusEl) return;
+  retryBtn.style.display = 'none';
+
+  if (!('BarcodeDetector' in window)) {
+    statusEl.textContent = '';
+    document.getElementById('scan-ui').style.display = 'none';
+    fallback.style.display = 'block';
+    return;
+  }
+
+  try {
+    statusEl.textContent = 'Starting camera…';
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }
+    });
+    scanStream = stream;
+    const video = document.getElementById('scan-video');
+    video.srcObject = stream;
+    await video.play();
+
+    const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e'] });
+    statusEl.textContent = 'Hold the disc barcode in the box…';
+
+    scanInterval = setInterval(async () => {
+      if (!video.videoWidth) return;
+      try {
+        const barcodes = await detector.detect(video);
+        if (barcodes.length > 0) {
+          const upc = barcodes[0].rawValue;
+          stopScan();
+          statusEl.textContent = `Detected ${upc} — looking up…`;
+          await lookupUPC(upc);
+        }
+      } catch(e) { /* ignore frame errors */ }
+    }, 300);
+
+  } catch(e) {
+    statusEl.textContent = 'Camera access denied or unavailable.';
+    retryBtn.style.display = 'inline-block';
+    fallback.style.display = 'block';
+  }
+}
+
+function stopScan() {
+  if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+  if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+}
+
+async function lookupUPC(upc) {
+  if (!upc) return;
+  const statusEl = document.getElementById('scan-status-text');
+  const retryBtn = document.getElementById('scan-retry-btn');
+
+  try {
+    const res = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(upc)}`);
+    const data = await res.json();
+
+    if (data.items && data.items.length > 0) {
+      // Clean up title — strip format suffixes like [Blu-ray], (DVD), 4K UHD, etc.
+      let title = data.items[0].title || '';
+      title = title.replace(/[\[\(]?\s*(blu-?ray|dvd|4k\s*uhd?|vhs|digital\s*(hd)?|digital\s*copy|ultraviolet)\s*[\]\)]?/gi, '').trim();
+      title = title.replace(/\s{2,}/g, ' ').trim();
+
+      if (statusEl) statusEl.textContent = `Found "${title}" — searching TMDB…`;
+
+      // Switch to Add by Title tab and auto-search
+      const titleTab = document.querySelector('.import-tab:nth-child(2)');
+      switchTab('title', titleTab);
+      document.getElementById('title-search-input').value = title;
+      await searchTMDB();
+    } else {
+      if (statusEl) statusEl.textContent = `UPC ${upc} not found in database.`;
+      if (retryBtn) retryBtn.style.display = 'inline-block';
+      document.getElementById('scan-fallback').style.display = 'block';
+    }
+  } catch(e) {
+    if (statusEl) statusEl.textContent = 'Lookup failed — check your connection.';
+    if (retryBtn) retryBtn.style.display = 'inline-block';
   }
 }
 
