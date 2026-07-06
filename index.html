@@ -481,7 +481,7 @@
 </header>
 
 <!-- IMPORT PANEL -->
-<div id="import-panel">
+<div id="import-panel" style="display:none">
   <div id="import-back-btn" style="display:none;margin-bottom:24px;text-align:left">
     <button class="btn btn-ghost" onclick="showApp()" style="font-size:0.7rem;padding:8px 16px">← Back to Collection</button>
   </div>
@@ -917,7 +917,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('api-key-input').value = savedKey;
     document.getElementById('api-key-status').textContent = '✓ API key loaded';
   }
-  document.getElementById('import-panel').style.display = 'block';
   const statusEl = document.getElementById('api-key-status');
   try {
     statusEl.textContent = (savedKey ? '✓ API key loaded · ' : '') + '⟳ Syncing…';
@@ -925,10 +924,15 @@ window.addEventListener('DOMContentLoaded', async () => {
     movies = loadedMovies;
     watchedSet = loadedWatched;
     statusEl.textContent = savedKey ? '✓ API key loaded' : '';
-    if (movies.length > 0) showApp();
+    if (movies.length > 0) {
+      showApp();
+    } else {
+      document.getElementById('import-panel').style.display = 'block';
+    }
   } catch(e) {
     console.warn('Supabase load error:', e);
     statusEl.textContent = savedKey ? '✓ API key loaded · ⚠ Working offline' : '⚠ Could not connect — working offline';
+    document.getElementById('import-panel').style.display = 'block';
   }
 });
 
