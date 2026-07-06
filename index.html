@@ -82,6 +82,7 @@
   .import-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 10px; text-align: left; font-style: italic; }
 
 
+
   /* BOX SET BANNER */
   #boxset-banner { display: flex; align-items: center; gap: 10px; background: rgba(232,197,71,0.08); border: 1px solid rgba(232,197,71,0.3); border-radius: 2px; padding: 10px 14px; margin-bottom: 16px; font-size: 0.78rem; color: var(--accent); letter-spacing: 0.05em; }
   #boxset-banner span { flex: 1; font-weight: 500; }
@@ -139,6 +140,8 @@
   .sort-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.7rem; font-family: 'DM Sans', sans-serif; text-transform: uppercase; letter-spacing: 0.12em; padding: 4px 8px; border-radius: 2px; transition: all 0.15s; }
   .sort-btn:hover { color: var(--text); background: var(--surface); }
   .sort-btn.active { color: var(--accent); }
+  .sort-btn.active::after { content: ' ↑'; font-size: 0.75em; opacity: 0.8; }
+  .sort-btn.active.desc::after { content: ' ↓'; }
 
   /* GRID */
   #grid { padding: 32px 48px; display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--card-w), 1fr)); gap: 20px; }
@@ -163,6 +166,10 @@
   .card-edit-btn { position: absolute; bottom: 52px; right: 8px; background: rgba(10,10,10,0.85); border: 1px solid var(--border); color: var(--text-dim); font-size: 0.6rem; font-family: 'DM Sans', sans-serif; text-transform: uppercase; letter-spacing: 0.1em; padding: 4px 7px; border-radius: 2px; cursor: pointer; opacity: 0; transition: opacity 0.15s, color 0.15s, border-color 0.15s; z-index: 3; }
   .card:hover .card-edit-btn { opacity: 1; }
   .card-edit-btn:hover { color: var(--accent); border-color: var(--accent); background: rgba(10,10,10,0.95); }
+  .card-watch-btn { position: absolute; bottom: 52px; left: 8px; background: rgba(10,10,10,0.85); border: 1px solid var(--border); color: var(--text-dim); font-size: 0.6rem; font-family: 'DM Sans', sans-serif; text-transform: uppercase; letter-spacing: 0.1em; padding: 4px 7px; border-radius: 2px; cursor: pointer; opacity: 0; transition: opacity 0.15s, color 0.15s, border-color 0.15s; z-index: 3; white-space: nowrap; }
+  .card:hover .card-watch-btn { opacity: 1; }
+  .card-watch-btn:hover { color: var(--accent); border-color: var(--accent); background: rgba(10,10,10,0.95); }
+  .card-watch-btn.is-watched:hover { color: var(--accent2); border-color: var(--accent2); }
 
   /* FORMAT BADGES */
   .fmt-badge { display: inline-block; font-size: 0.58rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 5px; border-radius: 2px; vertical-align: middle; }
@@ -656,6 +663,20 @@
 
       <div id="manual-status" class="import-hint" style="margin-top:12px"></div>
     </div>
+        </div>
+        <div id="scan-status-text">Initialising camera…</div>
+        <div style="text-align:center;margin-bottom:8px">
+          <button class="btn btn-ghost" id="scan-retry-btn" onclick="startScan()" style="display:none;font-size:0.75rem;padding:8px 16px">↺ Try Again</button>
+        </div>
+      </div>
+      <div id="scan-fallback" style="display:none">
+        <div>Live scanning unavailable on this browser. Enter the UPC barcode number manually:</div>
+        <div class="search-row">
+          <input type="text" id="scan-upc-input" inputmode="numeric" placeholder="e.g. 025192251917">
+          <button class="btn btn-accent" onclick="lookupUPC(document.getElementById('scan-upc-input').value.trim())" style="white-space:nowrap">Look Up</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div id="import-actions">
@@ -751,6 +772,7 @@ let movies = [];
 let filteredMovies = [];
 let watchedSet = new Set();
 let currentSort = 'title';
+let sortDir = 1; // 1 = default direction, -1 = reversed
 let currentStatusFilter = 'all';
 let currentRandomMovie = null;
 let selectedTMDBResult = null;
@@ -1703,10 +1725,20 @@ function setStatusFilter(btn) {
   applyFilters();
 }
 
+const SORT_LABELS = { title: 'Title', year: 'Year', rating: 'Rating', runtime: 'Runtime', dateAdded: 'Date Added' };
 function setSort(btn) {
-  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+  const isSame = btn.classList.contains('active');
+  document.querySelectorAll('.sort-btn').forEach(b => {
+    b.classList.remove('active', 'desc');
+  });
   btn.classList.add('active');
-  currentSort = btn.dataset.sort;
+  if (isSame) {
+    sortDir *= -1;
+  } else {
+    sortDir = 1;
+    currentSort = btn.dataset.sort;
+  }
+  if (sortDir === -1) btn.classList.add('desc');
   sortMovies(); renderGrid();
 }
 
@@ -1719,11 +1751,11 @@ function sortMovies() {
       const bo = b.collectionOrder || 999;
       if (ao !== bo) return ao - bo;
     }
-    if (currentSort === 'title') return sortTitle(a.title).localeCompare(sortTitle(b.title));
-    if (currentSort === 'year') return parseInt(b.year || 0) - parseInt(a.year || 0);
-    if (currentSort === 'rating') return (b.rating || 0) - (a.rating || 0);
-    if (currentSort === 'runtime') return (a.runtime || 999) - (b.runtime || 999);
-    if (currentSort === 'dateAdded') return new Date(b.dateAdded || 0) - new Date(a.dateAdded || 0);
+    if (currentSort === 'title') return sortTitle(a.title).localeCompare(sortTitle(b.title)) * sortDir;
+    if (currentSort === 'year') return (parseInt(b.year || 0) - parseInt(a.year || 0)) * sortDir;
+    if (currentSort === 'rating') return ((b.rating || 0) - (a.rating || 0)) * sortDir;
+    if (currentSort === 'runtime') return ((a.runtime || 999) - (b.runtime || 999)) * sortDir;
+    if (currentSort === 'dateAdded') return (new Date(b.dateAdded || 0) - new Date(a.dateAdded || 0)) * sortDir;
     return 0;
   });
 }
@@ -1768,9 +1800,11 @@ function renderGrid() {
       ? `<img class="card-poster" src="${movie.poster}" alt="${escHtml(movie.title)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="card-poster-placeholder" style="display:none"><div class="film-icon">🎞</div><div class="placeholder-title">${escHtml(movie.title)}</div></div>`
       : `<div class="card-poster-placeholder"><div class="film-icon">🎞</div><div class="placeholder-title">${escHtml(movie.title)}</div></div>`;
 
+    const cardIsWatched = watchedSet.has(String(movie.id));
     card.innerHTML = `
       <div class="card-watched-badge">✓ Seen</div>
       <button class="card-edit-btn" onclick="openFixModal('${escHtml(String(movie.id))}');event.stopPropagation()">✎ Fix</button>
+      <button class="card-watch-btn ${cardIsWatched ? 'is-watched' : ''}" onclick="toggleWatched('${escHtml(String(movie.id))}',null);event.stopPropagation()">${cardIsWatched ? '↩ Unsee' : '✓ Seen'}</button>
       ${posterHTML}
       <div class="card-info">
         <div class="card-title">${escHtml(movie.title)}</div>
