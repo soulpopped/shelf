@@ -136,6 +136,11 @@
   .toggle-btn.active { background: var(--accent); color: #0a0a0a; border-color: var(--accent); font-weight: 500; }
   .toggle-btn:not(.active):hover { border-color: var(--text-muted); color: var(--text); }
   .filter-results { padding: 12px 48px; font-size: 0.75rem; color: var(--text-muted); font-style: italic; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .boxset-pill { display: inline-flex; align-items: center; gap: 6px; background: rgba(230,200,80,0.12); border: 1px solid var(--accent); color: var(--accent); border-radius: 2px; padding: 2px 8px 2px 10px; font-size: 0.68rem; font-style: normal; letter-spacing: 0.06em; margin-left: 10px; }
+  .boxset-pill button { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.8rem; line-height: 1; padding: 0; opacity: 0.7; }
+  .boxset-pill button:hover { opacity: 1; }
+  .disc-boxset-link { background: none; border: none; color: inherit; font: inherit; font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline; text-decoration-color: rgba(230,200,80,0.4); text-underline-offset: 2px; transition: color 0.15s, text-decoration-color 0.15s; }
+  .disc-boxset-link:hover { color: var(--accent); text-decoration-color: var(--accent); }
   .sort-bar { display: flex; align-items: center; gap: 8px; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; }
   .sort-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.7rem; font-family: 'DM Sans', sans-serif; text-transform: uppercase; letter-spacing: 0.12em; padding: 4px 8px; border-radius: 2px; transition: all 0.15s; }
   .sort-btn:hover { color: var(--text); background: var(--surface); }
@@ -791,6 +796,7 @@ let selectedTMDBResult = null;
 let boxSetMode = null; // {boxSet, label, format} or null
 let selectionMode = false;
 let selectedIds = new Set();
+let currentBoxSetFilter = '';
 let apiKey = '';
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
@@ -1840,6 +1846,7 @@ function applyFilters() {
     if (format && m.format !== format) return false;
     if (label && m.label !== label) return false;
     if (collection && m.collectionId !== collection) return false;
+    if (currentBoxSetFilter && m.boxSet !== currentBoxSetFilter) return false;
     if (runtime < 300 && m.runtime && m.runtime > runtime) return false;
     return matchStatus(m);
   });
@@ -1847,8 +1854,24 @@ function applyFilters() {
   sortMovies();
   renderGrid();
   const total = filteredMovies.length;
-  document.getElementById('results-count').textContent =
-    total === movies.length ? `Showing all ${total} films` : `Showing ${total} of ${movies.length} films`;
+  const countEl = document.getElementById('results-count');
+  const baseText = total === movies.length ? `Showing all ${total} films` : `Showing ${total} of ${movies.length} films`;
+  if (currentBoxSetFilter) {
+    countEl.innerHTML = `${baseText}<span class="boxset-pill">📦 ${escHtml(currentBoxSetFilter)}<button onclick="clearBoxSetFilter()" title="Clear box set filter">✕</button></span>`;
+  } else {
+    countEl.textContent = baseText;
+  }
+}
+
+function filterByBoxSet(name) {
+  currentBoxSetFilter = name;
+  closeModal();
+  applyFilters();
+}
+
+function clearBoxSetFilter() {
+  currentBoxSetFilter = '';
+  applyFilters();
 }
 
 function matchStatus(m) {
@@ -1917,6 +1940,7 @@ function resetFilters() {
   document.querySelectorAll('[data-status]').forEach(b => b.classList.remove('active'));
   document.querySelector('[data-status="all"]').classList.add('active');
   currentStatusFilter = 'all';
+  currentBoxSetFilter = '';
   applyFilters();
 }
 
@@ -2007,7 +2031,7 @@ function openModal(movie) {
   // Disc location strip
   let discStrip = '';
   if (movie.boxSet || movie.hasVHS) {
-    const boxLine = movie.boxSet ? `<div class="disc-item"><span class="disc-label">Find disc in</span><span class="disc-value"><strong>${escHtml(movie.boxSet)}</strong></span></div>` : '';
+    const boxLine = movie.boxSet ? `<div class="disc-item"><span class="disc-label">Find disc in</span><span class="disc-value"><button class="disc-boxset-link" onclick="filterByBoxSet(${JSON.stringify(movie.boxSet)})">${escHtml(movie.boxSet)}</button></span></div>` : '';
     const vhsLine = movie.hasVHS ? `<div class="disc-item"><span class="disc-label">Also on</span><span class="disc-value"><em>📼 VHS</em></span></div>` : '';
     discStrip = `<div class="modal-disc-strip">${boxLine}${vhsLine}</div>`;
   }
