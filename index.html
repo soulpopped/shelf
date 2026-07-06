@@ -170,6 +170,31 @@
   .card:hover .card-watch-btn { opacity: 1; }
   .card-watch-btn:hover { color: var(--accent); border-color: var(--accent); background: rgba(10,10,10,0.95); }
   .card-watch-btn.is-watched:hover { color: var(--accent2); border-color: var(--accent2); }
+  /* ── SELECTION MODE ──────────────────────────────────────────────────── */
+  body.selection-mode .card { cursor: pointer; }
+  body.selection-mode .card-edit-btn,
+  body.selection-mode .card-watch-btn { display: none; }
+  .card-check { display: none; position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.5); background: rgba(10,10,10,0.7); z-index: 4; pointer-events: none; }
+  body.selection-mode .card-check { display: block; }
+  .card.selected .card-check { background: var(--accent); border-color: var(--accent); }
+  .card.selected .card-check::after { content: '✓'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700; color: #0a0a0a; line-height: 20px; text-align: center; }
+  .card.selected { outline: 2px solid var(--accent); outline-offset: -2px; }
+  body.selection-mode .card:hover:not(.selected) { outline: 2px solid rgba(230,200,80,0.4); outline-offset: -2px; }
+  /* ── BULK BAR ────────────────────────────────────────────────────────── */
+  #bulk-bar { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 10px 16px; display: none; align-items: center; gap: 12px; z-index: 200; box-shadow: 0 8px 32px rgba(0,0,0,0.6); white-space: nowrap; }
+  #bulk-bar.visible { display: flex; }
+  #bulk-bar-count { font-size: 0.75rem; color: var(--text-dim); min-width: 80px; }
+  #bulk-bar-count strong { color: var(--accent); }
+  /* ── BULK MODAL ──────────────────────────────────────────────────────── */
+  #bulk-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 300; align-items: center; justify-content: center; padding: 24px; }
+  #bulk-modal.open { display: flex; }
+  .bulk-box { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 32px; max-width: 480px; width: 100%; }
+  .bulk-box-title { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.18em; color: var(--text-dim); margin-bottom: 6px; }
+  .bulk-box-sub { font-size: 0.72rem; color: var(--text-muted); font-style: italic; margin-bottom: 24px; }
+  .bulk-field { margin-bottom: 16px; }
+  .bulk-field label { display: block; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-dim); margin-bottom: 6px; }
+  .bulk-field input, .bulk-field select { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.82rem; padding: 9px 12px; border-radius: 2px; box-sizing: border-box; }
+  .bulk-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
 
   /* FORMAT BADGES */
   .fmt-badge { display: inline-block; font-size: 0.58rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 5px; border-radius: 2px; vertical-align: middle; }
@@ -475,6 +500,7 @@
   </div>
   <div class="header-actions">
     <button class="btn btn-ghost" onclick="syncFromCloud()" title="Sync from cloud" style="padding:10px 12px">⟳</button>
+    <button class="btn btn-ghost" id="select-btn" onclick="toggleSelectionMode()" style="display:none">☰ Select</button>
     <button class="btn btn-ghost" onclick="showImport()">+ Add Film</button>
     <button class="btn btn-random" onclick="pickRandom()">⚄ Pick One For Me</button>
   </div>
@@ -763,6 +789,8 @@ let currentStatusFilter = 'all';
 let currentRandomMovie = null;
 let selectedTMDBResult = null;
 let boxSetMode = null; // {boxSet, label, format} or null
+let selectionMode = false;
+let selectedIds = new Set();
 let apiKey = '';
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
@@ -1551,11 +1579,116 @@ function updateHeaderHeight() {
   const h = document.getElementById('main-header').offsetHeight;
   if (h > 0) document.documentElement.style.setProperty('--header-height', h + 'px');
 }
+// ── BULK SELECT / EDIT ────────────────────────────────────────────────────
+function toggleSelectionMode() {
+  selectionMode = !selectionMode;
+  const btn = document.getElementById('select-btn');
+  if (selectionMode) {
+    btn.textContent = '✕ Done';
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+  } else {
+    btn.textContent = '☰ Select';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    selectedIds.clear();
+    document.getElementById('bulk-bar').classList.remove('visible');
+  }
+  document.body.classList.toggle('selection-mode', selectionMode);
+  updateBulkBar();
+  renderGrid();
+}
+
+function toggleCardSelection(id) {
+  if (selectedIds.has(id)) selectedIds.delete(id);
+  else selectedIds.add(id);
+  updateBulkBar();
+  // Just toggle classes on the card element to avoid full re-render
+  document.querySelectorAll('.card[data-id="' + id + '"]').forEach(el => {
+    el.classList.toggle('selected', selectedIds.has(id));
+    const chk = el.querySelector('.card-check');
+    if (chk) chk.classList.toggle('selected-chk', selectedIds.has(id));
+  });
+  document.getElementById('bulk-bar-num').textContent = selectedIds.size;
+}
+
+function selectAllVisible() {
+  filteredMovies.forEach(m => selectedIds.add(String(m.id)));
+  updateBulkBar();
+  renderGrid();
+}
+
+function clearBulkSelection() {
+  selectedIds.clear();
+  updateBulkBar();
+  renderGrid();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulk-bar');
+  document.getElementById('bulk-bar-num').textContent = selectedIds.size;
+  document.getElementById('bulk-select-all-btn').textContent = `Select All Visible (${filteredMovies.length})`;
+  document.getElementById('bulk-clear-btn').style.display = selectedIds.size > 0 ? '' : 'none';
+  document.getElementById('bulk-edit-btn').style.display = selectedIds.size > 0 ? '' : 'none';
+  bar.classList.toggle('visible', selectionMode);
+}
+
+function openBulkEditModal() {
+  document.getElementById('bulk-modal-count').textContent = selectedIds.size;
+  document.getElementById('bulk-boxset').value = '';
+  document.getElementById('bulk-label').value = '';
+  document.getElementById('bulk-format').value = '';
+  document.getElementById('bulk-save-status').textContent = '';
+  document.getElementById('bulk-modal').classList.add('open');
+}
+
+function closeBulkEditModal() {
+  document.getElementById('bulk-modal').classList.remove('open');
+}
+
+async function saveBulkEdit() {
+  const boxSet = document.getElementById('bulk-boxset').value.trim();
+  const labelVal = document.getElementById('bulk-label').value;
+  const format = document.getElementById('bulk-format').value;
+  const statusEl = document.getElementById('bulk-save-status');
+
+  if (!boxSet && !labelVal && !format) {
+    statusEl.textContent = 'Nothing to save — fill in at least one field.';
+    return;
+  }
+
+  const toUpdate = movies.filter(m => selectedIds.has(String(m.id)));
+  statusEl.textContent = `Saving ${toUpdate.length} films…`;
+
+  toUpdate.forEach(m => {
+    if (boxSet) m.boxSet = boxSet;
+    if (labelVal === '__clear__') m.label = '';
+    else if (labelVal) m.label = labelVal;
+    if (format) m.format = format;
+  });
+
+  try {
+    await sbFetch('shelf_movies', {
+      method: 'POST',
+      headers: { ...SB_HEADERS, 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify(toUpdate.map(m => ({ id: String(m.id), data: m, updated_at: new Date().toISOString() })))
+    });
+    statusEl.textContent = `✓ ${toUpdate.length} films updated.`;
+    setTimeout(() => {
+      closeBulkEditModal();
+      toggleSelectionMode();
+    }, 900);
+  } catch(e) {
+    statusEl.textContent = '⚠ Save failed: ' + e.message;
+  }
+}
+
 // ── SHOW / HIDE PANELS ────────────────────────────────────────────────────
 function showApp() {
   document.getElementById('import-panel').style.display = 'none';
   document.getElementById('main-header').style.display = 'flex';
   document.getElementById('app').classList.add('active');
+  document.getElementById('select-btn').style.display = '';
   buildFilterOptions();
   applyFilters();
   updateStats();
@@ -1563,6 +1696,7 @@ function showApp() {
 }
 
 function showImport() {
+  if (selectionMode) toggleSelectionMode();
   document.getElementById('import-panel').style.display = 'block';
   document.getElementById('main-header').style.display = 'none';
   document.getElementById('app').classList.remove('active');
@@ -1781,20 +1915,24 @@ function renderGrid() {
     return;
   }
   filteredMovies.forEach((movie, i) => {
+    const id = String(movie.id);
+    const isSelected = selectionMode && selectedIds.has(id);
     const card = document.createElement('div');
-    card.className = 'card' + (watchedSet.has(movie.id) ? ' watched' : '');
+    card.className = 'card' + (watchedSet.has(id) ? ' watched' : '') + (isSelected ? ' selected' : '');
+    card.dataset.id = id;
     card.style.animationDelay = `${Math.min(i, 30) * 0.02}s`;
-    card.onclick = () => openModal(movie);
+    card.onclick = selectionMode ? () => toggleCardSelection(id) : () => openModal(movie);
 
     const posterHTML = movie.poster
       ? `<img class="card-poster" src="${movie.poster}" alt="${escHtml(movie.title)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="card-poster-placeholder" style="display:none"><div class="film-icon">🎞</div><div class="placeholder-title">${escHtml(movie.title)}</div></div>`
       : `<div class="card-poster-placeholder"><div class="film-icon">🎞</div><div class="placeholder-title">${escHtml(movie.title)}</div></div>`;
 
-    const cardIsWatched = watchedSet.has(String(movie.id));
+    const cardIsWatched = watchedSet.has(id);
     card.innerHTML = `
       <div class="card-watched-badge">✓ Seen</div>
-      <button class="card-edit-btn" onclick="openFixModal('${escHtml(String(movie.id))}');event.stopPropagation()">✎ Fix</button>
-      <button class="card-watch-btn ${cardIsWatched ? 'is-watched' : ''}" onclick="toggleWatched('${escHtml(String(movie.id))}',null);event.stopPropagation()">${cardIsWatched ? '↩ Unsee' : '✓ Seen'}</button>
+      <div class="card-check${isSelected ? ' selected-chk' : ''}"></div>
+      <button class="card-edit-btn" onclick="openFixModal('${escHtml(id)}');event.stopPropagation()">✎ Fix</button>
+      <button class="card-watch-btn ${cardIsWatched ? 'is-watched' : ''}" onclick="toggleWatched('${escHtml(id)}',null);event.stopPropagation()">${cardIsWatched ? '↩ Unsee' : '✓ Seen'}</button>
       ${posterHTML}
       <div class="card-info">
         <div class="card-title">${escHtml(movie.title)}</div>
@@ -1806,6 +1944,7 @@ function renderGrid() {
       </div>`;
     grid.appendChild(card);
   });
+  if (selectionMode) updateBulkBar();
 }
 
 // ── STATS ─────────────────────────────────────────────────────────────────
@@ -2270,9 +2409,63 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && movies.length > 0) {
     const importPanel = document.getElementById('import-panel');
     if (importPanel.style.display !== 'none') showApp();
+    if (document.getElementById('bulk-modal').classList.contains('open')) { closeBulkEditModal(); return; }
+    if (selectionMode) toggleSelectionMode();
   }
 });
 
 </script>
+
+<!-- BULK ACTION BAR -->
+<div id="bulk-bar">
+  <div id="bulk-bar-count"><strong id="bulk-bar-num">0</strong> selected</div>
+  <button class="btn btn-ghost" id="bulk-select-all-btn" onclick="selectAllVisible()" style="font-size:0.7rem;padding:7px 13px">Select All Visible</button>
+  <button class="btn btn-ghost" id="bulk-clear-btn" onclick="clearBulkSelection()" style="font-size:0.7rem;padding:7px 13px;display:none">Clear</button>
+  <button class="btn btn-accent" id="bulk-edit-btn" onclick="openBulkEditModal()" style="font-size:0.72rem;padding:9px 16px;display:none">Edit Selected →</button>
+</div>
+
+<!-- BULK EDIT MODAL -->
+<div id="bulk-modal">
+  <div class="bulk-box">
+    <div class="bulk-box-title">Bulk Edit — <span id="bulk-modal-count"></span> Films</div>
+    <div class="bulk-box-sub">Leave a field blank / at "don't change" to skip it.</div>
+    <div class="bulk-field">
+      <label>Box Set Name</label>
+      <input type="text" id="bulk-boxset" placeholder="e.g. Zatoichi: The Complete Series">
+    </div>
+    <div class="bulk-field">
+      <label>Label</label>
+      <select id="bulk-label">
+        <option value="">— don't change —</option>
+        <option value="__clear__">Clear label</option>
+        <option value="Criterion Collection">Criterion Collection</option>
+        <option value="Vinegar Syndrome">Vinegar Syndrome</option>
+        <option value="Shout Factory / Scream Factory">Shout / Scream Factory</option>
+        <option value="Arrow Video">Arrow Video</option>
+        <option value="Kino Lorber">Kino Lorber</option>
+        <option value="Drafthouse Films">Drafthouse Films</option>
+        <option value="A24">A24</option>
+        <option value="MUBI">MUBI</option>
+        <option value="Oscilloscope">Oscilloscope</option>
+      </select>
+    </div>
+    <div class="bulk-field">
+      <label>Format</label>
+      <select id="bulk-format">
+        <option value="">— don't change —</option>
+        <option value="4K UHD">4K UHD</option>
+        <option value="Blu-ray">Blu-ray</option>
+        <option value="DVD">DVD</option>
+        <option value="VHS">VHS</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div id="bulk-save-status" style="font-size:0.72rem;color:var(--accent);min-height:18px;margin-top:4px"></div>
+    <div class="bulk-actions">
+      <button class="btn btn-ghost" onclick="closeBulkEditModal()">Cancel</button>
+      <button class="btn btn-accent" onclick="saveBulkEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
