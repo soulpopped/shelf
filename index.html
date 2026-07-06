@@ -1638,6 +1638,7 @@ function openBulkEditModal() {
   document.getElementById('bulk-boxset').value = '';
   document.getElementById('bulk-label').value = '';
   document.getElementById('bulk-format').value = '';
+  document.getElementById('bulk-watched').value = '';
   document.getElementById('bulk-save-status').textContent = '';
   document.getElementById('bulk-modal').classList.add('open');
 }
@@ -1650,9 +1651,10 @@ async function saveBulkEdit() {
   const boxSet = document.getElementById('bulk-boxset').value.trim();
   const labelVal = document.getElementById('bulk-label').value;
   const format = document.getElementById('bulk-format').value;
+  const watchedVal = document.getElementById('bulk-watched').value;
   const statusEl = document.getElementById('bulk-save-status');
 
-  if (!boxSet && !labelVal && !format) {
+  if (!boxSet && !labelVal && !format && !watchedVal) {
     statusEl.textContent = 'Nothing to save — fill in at least one field.';
     return;
   }
@@ -1660,20 +1662,39 @@ async function saveBulkEdit() {
   const toUpdate = movies.filter(m => selectedIds.has(String(m.id)));
   statusEl.textContent = `Saving ${toUpdate.length} films…`;
 
-  toUpdate.forEach(m => {
-    if (boxSet) m.boxSet = boxSet;
-    if (labelVal === '__clear__') m.label = '';
-    else if (labelVal) m.label = labelVal;
-    if (format) m.format = format;
-  });
-
   try {
-    await sbFetch('shelf_movies', {
-      method: 'POST',
-      headers: { ...SB_HEADERS, 'Prefer': 'resolution=merge-duplicates' },
-      body: JSON.stringify(toUpdate.map(m => ({ id: String(m.id), data: m, updated_at: new Date().toISOString() })))
-    });
+    // Update movie metadata if any metadata field changed
+    if (boxSet || labelVal || format) {
+      toUpdate.forEach(m => {
+        if (boxSet) m.boxSet = boxSet;
+        if (labelVal === '__clear__') m.label = '';
+        else if (labelVal) m.label = labelVal;
+        if (format) m.format = format;
+      });
+      await sbFetch('shelf_movies', {
+        method: 'POST',
+        headers: { ...SB_HEADERS, 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify(toUpdate.map(m => ({ id: String(m.id), data: m, updated_at: new Date().toISOString() })))
+      });
+    }
+
+    // Update watched status if requested
+    if (watchedVal === 'seen') {
+      const nowIso = new Date().toISOString();
+      await sbFetch('shelf_watched', {
+        method: 'POST',
+        headers: { ...SB_HEADERS, 'Prefer': 'resolution=merge-duplicates' },
+        body: JSON.stringify(toUpdate.map(m => ({ movie_id: String(m.id), watched_at: nowIso })))
+      });
+      toUpdate.forEach(m => watchedSet.add(String(m.id)));
+    } else if (watchedVal === 'unseen') {
+      const idList = toUpdate.map(m => String(m.id)).join(',');
+      await sbFetch(`shelf_watched?movie_id=in.(${idList})`, { method: 'DELETE' });
+      toUpdate.forEach(m => watchedSet.delete(String(m.id)));
+    }
+
     statusEl.textContent = `✓ ${toUpdate.length} films updated.`;
+    updateStats();
     setTimeout(() => {
       closeBulkEditModal();
       toggleSelectionMode();
@@ -2458,6 +2479,14 @@ document.addEventListener('keydown', e => {
         <option value="DVD">DVD</option>
         <option value="VHS">VHS</option>
         <option value="Other">Other</option>
+      </select>
+    </div>
+    <div class="bulk-field">
+      <label>Seen Status</label>
+      <select id="bulk-watched">
+        <option value="">— don't change —</option>
+        <option value="seen">Mark all as Seen ✓</option>
+        <option value="unseen">Mark all as Unseen ↩</option>
       </select>
     </div>
     <div id="bulk-save-status" style="font-size:0.72rem;color:var(--accent);min-height:18px;margin-top:4px"></div>
