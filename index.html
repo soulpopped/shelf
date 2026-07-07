@@ -2031,7 +2031,8 @@ function openModal(movie) {
   // Disc location strip
   let discStrip = '';
   if (movie.boxSet || movie.hasVHS) {
-    const boxLine = movie.boxSet ? `<div class="disc-item"><span class="disc-label">Find disc in</span><span class="disc-value"><button class="disc-boxset-link" onclick="filterByBoxSet(${JSON.stringify(movie.boxSet)})">${escHtml(movie.boxSet)}</button></span></div>` : '';
+    const boxSetJs = (movie.boxSet || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const boxLine = movie.boxSet ? `<div class="disc-item"><span class="disc-label">Find disc in</span><span class="disc-value"><button class="disc-boxset-link" onclick="filterByBoxSet('${boxSetJs}')">${escHtml(movie.boxSet)}</button></span></div>` : '';
     const vhsLine = movie.hasVHS ? `<div class="disc-item"><span class="disc-label">Also on</span><span class="disc-value"><em>📼 VHS</em></span></div>` : '';
     discStrip = `<div class="modal-disc-strip">${boxLine}${vhsLine}</div>`;
   }
