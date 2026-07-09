@@ -1406,6 +1406,8 @@ function selectTMDBResult(result, el) {
     document.getElementById('add-label-select').value = boxSetMode.label || '';
   } else {
     document.getElementById('add-boxset-input').value = '';
+    document.getElementById('add-format-select').value = 'Blu-ray';
+    document.getElementById('add-label-select').value = '';
   }
   const btn = document.getElementById('add-film-btn');
   if (btn) btn.disabled = false;
@@ -1733,6 +1735,16 @@ function showImport() {
   if (movies.length > 0) {
     const titleTab = document.querySelector('.import-tab:nth-child(2)');
     switchTab('title', titleTab);
+    // Reset disc info form to defaults unless box set mode is keeping values
+    if (!boxSetMode) {
+      document.getElementById('add-format-select').value = 'Blu-ray';
+      document.getElementById('add-label-select').value = '';
+      document.getElementById('add-boxset-input').value = '';
+      document.getElementById('add-film-form').style.display = 'none';
+      document.getElementById('tmdb-results').innerHTML = '';
+      document.getElementById('title-search-input').value = '';
+      document.getElementById('title-search-status').textContent = '';
+    }
     // Show the Reset danger zone only when there's a library to reset
     document.getElementById('reset-all-section').style.display = watchedSet.size > 0 ? 'block' : 'none';
   }
@@ -1865,6 +1877,7 @@ function applyFilters() {
 
 function filterByBoxSet(name) {
   currentBoxSetFilter = name;
+  document.getElementById('search-input').value = '';
   closeModal();
   applyFilters();
 }
@@ -2483,7 +2496,6 @@ document.addEventListener('keydown', e => {
       <label>Label</label>
       <select id="bulk-label">
         <option value="">— don't change —</option>
-        <option value="__clear__">Clear label</option>
         <option value="Criterion Collection">Criterion Collection</option>
         <option value="Vinegar Syndrome">Vinegar Syndrome</option>
         <option value="Shout Factory / Scream Factory">Shout / Scream Factory</option>
@@ -2493,6 +2505,7 @@ document.addEventListener('keydown', e => {
         <option value="A24">A24</option>
         <option value="MUBI">MUBI</option>
         <option value="Oscilloscope">Oscilloscope</option>
+        <option value="__clear__">Clear label</option>
       </select>
     </div>
     <div class="bulk-field">
@@ -2510,8 +2523,8 @@ document.addEventListener('keydown', e => {
       <label>Seen Status</label>
       <select id="bulk-watched">
         <option value="">— don't change —</option>
-        <option value="seen">Mark all as Seen ✓</option>
-        <option value="unseen">Mark all as Unseen ↩</option>
+        <option value="seen">Seen (mark all) ✓</option>
+        <option value="unseen">Unseen (mark all) ↩</option>
       </select>
     </div>
     <div id="bulk-save-status" style="font-size:0.72rem;color:var(--accent);min-height:18px;margin-top:4px"></div>
