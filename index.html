@@ -411,6 +411,20 @@
     </div>
 
     <div class="fix-section">
+      <div class="fix-section-label">Title overrides</div>
+      <div class="add-form-group" style="margin-bottom:10px">
+        <div class="add-form-label">Display title <span style="font-weight:400;color:var(--text-dim)">(overrides TMDB — shown in grid &amp; modal)</span></div>
+        <input type="text" id="fix-display-title" placeholder="e.g. Nausicaä of the Valley of the Wind">
+      </div>
+      <div class="add-form-group">
+        <div class="add-form-label">Sort title <span style="font-weight:400;color:var(--text-dim)">(invisible — affects alphabetical order only)</span></div>
+        <input type="text" id="fix-sort-title" placeholder="e.g. Three Amigos, REC">
+      </div>
+      <div class="fix-hint" style="margin-top:6px">Leave blank to use TMDB values. Sort title strips leading articles (The, A, An) automatically — only set it for punctuation or article issues.</div>
+      <button class="btn btn-accent" style="margin-top:12px;width:100%;padding:10px" onclick="saveTitleOverrides()">Save Title Overrides</button>
+    </div>
+
+    <div class="fix-section">
       <div class="fix-section-label">Edit disc info</div>
       <div class="fix-disc-row">
         <div class="add-form-group">
@@ -1714,6 +1728,7 @@ async function saveBulkEdit() {
 
 // ── SHOW / HIDE PANELS ────────────────────────────────────────────────────
 function showApp() {
+  clearBoxSetMode();
   document.getElementById('import-panel').style.display = 'none';
   document.getElementById('main-header').style.display = 'flex';
   document.getElementById('app').classList.add('active');
@@ -1850,7 +1865,8 @@ function applyFilters() {
       if (search && !normalizeSearch(m.title).includes(search)) return false;
       return matchStatus(m);
     }
-    if (search && !normalizeSearch(m.title).includes(search) &&
+    const searchTitles = [m.displayTitle, m.title].filter(Boolean);
+    if (search && !searchTitles.some(t => normalizeSearch(t).includes(search)) &&
         !normalizeSearch(m.director || '').includes(search) &&
         !(m.cast?.some(c => normalizeSearch(c).includes(search)))) return false;
     if (genre && !m.genres?.includes(genre)) return false;
@@ -1932,7 +1948,7 @@ function sortMovies() {
       const bo = b.collectionOrder || 999;
       if (ao !== bo) return ao - bo;
     }
-    if (currentSort === 'title') return sortTitle(a.title).localeCompare(sortTitle(b.title)) * sortDir;
+    if (currentSort === 'title') return sortTitle(a.sortTitle || a.displayTitle || a.title).localeCompare(sortTitle(b.sortTitle || b.displayTitle || b.title)) * sortDir;
     if (currentSort === 'year') return (parseInt(b.year || 0) - parseInt(a.year || 0)) * sortDir;
     if (currentSort === 'rating') return ((b.rating || 0) - (a.rating || 0)) * sortDir;
     if (currentSort === 'runtime') return ((a.runtime || 999) - (b.runtime || 999)) * sortDir;
@@ -1981,9 +1997,10 @@ function renderGrid() {
     card.style.animationDelay = `${Math.min(i, 30) * 0.02}s`;
     card.onclick = selectionMode ? () => toggleCardSelection(id) : () => openModal(movie);
 
+    const displayedTitle = movie.displayTitle || movie.title;
     const posterHTML = movie.poster
-      ? `<img class="card-poster" src="${movie.poster}" alt="${escHtml(movie.title)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="card-poster-placeholder" style="display:none"><div class="film-icon">🎞</div><div class="placeholder-title">${escHtml(movie.title)}</div></div>`
-      : `<div class="card-poster-placeholder"><div class="film-icon">🎞</div><div class="placeholder-title">${escHtml(movie.title)}</div></div>`;
+      ? `<img class="card-poster" src="${movie.poster}" alt="${escHtml(displayedTitle)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="card-poster-placeholder" style="display:none"><div class="film-icon">🎞</div><div class="placeholder-title">${escHtml(displayedTitle)}</div></div>`
+      : `<div class="card-poster-placeholder"><div class="film-icon">🎞</div><div class="placeholder-title">${escHtml(displayedTitle)}</div></div>`;
 
     const cardIsWatched = watchedSet.has(id);
     card.innerHTML = `
@@ -1993,7 +2010,7 @@ function renderGrid() {
       <button class="card-watch-btn ${cardIsWatched ? 'is-watched' : ''}" onclick="toggleWatched('${escHtml(id)}',null);event.stopPropagation()">${cardIsWatched ? '↩ Unsee' : '✓ Seen'}</button>
       ${posterHTML}
       <div class="card-info">
-        <div class="card-title">${escHtml(movie.title)}</div>
+        <div class="card-title">${escHtml(displayedTitle)}</div>
         <div class="card-meta">
           <span class="card-year">${movie.year || '—'}</span>
           ${movie.rating ? `<span class="card-rating">★ ${movie.rating}</span>` : ''}
@@ -2055,8 +2072,8 @@ function openModal(movie) {
       ${posterHTML}
       <div class="modal-hero-info">
         <div>
-          <div class="modal-title">${escHtml(movie.title)}</div>
-          ${movie.originalTitle && movie.originalTitle !== movie.title ? `<div class="modal-original-title">${escHtml(movie.originalTitle)}</div>` : ''}
+          <div class="modal-title">${escHtml(movie.displayTitle || movie.title)}</div>
+          ${movie.displayTitle && movie.displayTitle !== movie.title ? `<div class="modal-original-title">${escHtml(movie.title)}</div>` : movie.originalTitle && movie.originalTitle !== movie.title ? `<div class="modal-original-title">${escHtml(movie.originalTitle)}</div>` : ''}
           <div class="modal-badges">${fmtBadge}${vhsBadge}${labelBadge}</div>
           <div class="modal-genres">${(movie.genres || []).map(g => `<span class="genre-pill">${escHtml(g)}</span>`).join('')}</div>
           <div class="modal-meta-row">
@@ -2239,8 +2256,10 @@ function openFixModal(movieId) {
   fixTargetId = movieId;
   const movie = movies.find(m => m.id === movieId);
   if (!movie) return;
-  document.getElementById('fix-movie-name').textContent = movie.title || movie.searchTitle;
+  document.getElementById('fix-movie-name').textContent = movie.displayTitle || movie.title || movie.searchTitle;
   document.getElementById('fix-title-input').value = movie.searchTitle || movie.title || '';
+  document.getElementById('fix-display-title').value = movie.displayTitle || '';
+  document.getElementById('fix-sort-title').value = movie.sortTitle || '';
   document.getElementById('fix-tmdbid-input').value = '';
   document.getElementById('fix-format-select').value = movie.format || 'Blu-ray';
   document.getElementById('fix-boxset-input').value = movie.boxSet || '';
@@ -2296,6 +2315,23 @@ async function fixByTmdbId() {
     }
     await applyMovieFix(movie);
   } catch(e) { setFixStatus('Error fetching.', true); }
+}
+
+async function saveTitleOverrides() {
+  const idx = movies.findIndex(m => m.id === fixTargetId);
+  if (idx === -1) return;
+  const displayTitle = document.getElementById('fix-display-title').value.trim() || null;
+  const sortTitle = document.getElementById('fix-sort-title').value.trim() || null;
+  movies[idx].displayTitle = displayTitle;
+  movies[idx].sortTitle = sortTitle;
+  // Update the modal header to reflect new display title
+  document.getElementById('fix-movie-name').textContent = displayTitle || movies[idx].title || movies[idx].searchTitle;
+  try {
+    await sbSaveMovie(movies[idx]);
+    setFixStatus('✓ Title overrides saved');
+    applyFilters();
+    setTimeout(closeFixModal, 1000);
+  } catch(e) { setFixStatus('Error saving.', true); }
 }
 
 async function saveDiscInfo() {
