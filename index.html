@@ -142,6 +142,13 @@
   .boxset-pill button:hover { opacity: 1; }
   .disc-boxset-link { background: none; border: none; color: inherit; font: inherit; font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline; text-decoration-color: rgba(230,200,80,0.4); text-underline-offset: 2px; transition: color 0.15s, text-decoration-color 0.15s; }
   .disc-boxset-link:hover { color: var(--accent); text-decoration-color: var(--accent); }
+  .person-chip { background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; transition: color 0.15s; text-align: left; }
+  .person-chip:hover { color: var(--accent); }
+  .cast-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+  .cast-chip { padding: 3px 10px; border: 1px solid var(--border); border-radius: 2px; font-size: 0.7rem; color: var(--text-muted); cursor: pointer; background: none; font-family: 'DM Sans', sans-serif; transition: all 0.15s; white-space: nowrap; letter-spacing: 0.02em; }
+  .cast-chip:hover { border-color: var(--accent); color: var(--accent); background: rgba(232,197,71,0.05); }
+  .writer-chip { background: var(--surface2); border-color: transparent; }
+  .writer-chip:hover { border-color: var(--accent); background: rgba(232,197,71,0.05); }
   .sort-bar { display: flex; align-items: center; gap: 8px; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; }
   .sort-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.7rem; font-family: 'DM Sans', sans-serif; text-transform: uppercase; letter-spacing: 0.12em; padding: 4px 8px; border-radius: 2px; transition: all 0.15s; }
   .sort-btn:hover { color: var(--text); background: var(--surface); }
@@ -1335,7 +1342,8 @@ function buildMovieObject(result, detail, searchTitle) {
     genres: detail?.genres?.map(g => g.name) || [],
     runtime: detail?.runtime || null,
     director: detail?.credits?.crew?.find(c => c.job === 'Director')?.name || null,
-    cast: detail?.credits?.cast?.slice(0, 4).map(c => c.name) || [],
+    cast: detail?.credits?.cast?.slice(0, 15).map(c => c.name) || [],
+    writers: [...new Set((detail?.credits?.crew?.filter(c => ['Screenplay','Story','Writer','Screenstory'].includes(c.job)) || []).map(c => c.name))],
     countries: detail?.production_countries?.map(c => c.name) || [],
     language: detail?.original_language || result.original_language,
     tmdbId: String(result.id),
@@ -1960,7 +1968,8 @@ function applyFilters() {
     const searchTitles = [m.displayTitle, m.title].filter(Boolean);
     if (search && !searchTitles.some(t => normalizeSearch(t).includes(search)) &&
         !normalizeSearch(m.director || '').includes(search) &&
-        !(m.cast?.some(c => normalizeSearch(c).includes(search)))) return false;
+        !(m.cast?.some(c => normalizeSearch(c).includes(search))) &&
+        !(m.writers?.some(c => normalizeSearch(c).includes(search)))) return false;
     if (genre && !m.genres?.includes(genre)) return false;
     if (decade && Math.floor(parseInt(m.year) / 10) * 10 !== parseInt(decade)) return false;
     if (format && m.format !== format) return false;
@@ -2125,6 +2134,27 @@ function updateStats() {
 }
 
 // ── MODAL ─────────────────────────────────────────────────────────────────
+let currentModalMovieId = null;
+
+function escJs(str) { return (str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+
+function buildCreditsHTML(movie) {
+  let html = '';
+  if (movie.writers?.length) {
+    const chips = [...new Set(movie.writers)].map(w =>
+      `<button class="cast-chip writer-chip" onclick="searchByPerson('${escJs(w)}')">${escHtml(w)}</button>`
+    ).join('');
+    html += `<div style="margin-bottom:12px"><div class="modal-meta-label" style="margin-bottom:6px">Written by</div><div class="cast-chips">${chips}</div></div>`;
+  }
+  if (movie.cast?.length) {
+    const chips = movie.cast.map(c =>
+      `<button class="cast-chip" onclick="searchByPerson('${escJs(c)}')">${escHtml(c)}</button>`
+    ).join('');
+    html += `<div style="margin-bottom:4px"><div class="modal-meta-label" style="margin-bottom:6px">Cast</div><div class="cast-chips">${chips}</div></div>`;
+  }
+  return html;
+}
+
 function openModal(movie) {
   const isWatched = watchedSet.has(movie.id);
   const content = document.getElementById('modal-content');
@@ -2172,10 +2202,10 @@ function openModal(movie) {
             ${movie.year ? `<div class="modal-meta-item"><div class="modal-meta-label">Year</div><div class="modal-meta-value">${movie.year}</div></div>` : ''}
             ${movie.rating ? `<div class="modal-meta-item"><div class="modal-meta-label">TMDB</div><div class="modal-rating-big">★ ${movie.rating}</div></div>` : ''}
             ${movie.runtime ? `<div class="modal-meta-item"><div class="modal-meta-label">Runtime</div><div class="modal-meta-value">${movie.runtime} min</div></div>` : ''}
-            ${movie.director ? `<div class="modal-meta-item"><div class="modal-meta-label">Director</div><div class="modal-meta-value">${escHtml(movie.director)}</div></div>` : ''}
+            ${movie.director ? `<div class="modal-meta-item"><div class="modal-meta-label">Director</div><div class="modal-meta-value"><button class="person-chip" onclick="searchByPerson('${escJs(movie.director)}')">${escHtml(movie.director)}</button></div></div>` : ''}
             ${seriesHTML}
           </div>
-          ${movie.cast?.length ? `<div style="margin-bottom:16px"><div class="modal-meta-label" style="margin-bottom:6px">Cast</div><div style="font-size:0.82rem;color:var(--text-muted)">${movie.cast.join(' · ')}</div></div>` : ''}
+          <div id="modal-credits">${buildCreditsHTML(movie)}</div>
         </div>
         ${movie.overview ? `<div class="modal-overview">"${escHtml(movie.overview)}"</div>` : ''}
       </div>
@@ -2190,10 +2220,44 @@ function openModal(movie) {
       ${movie.collectionId ? `<a class="btn-tmdb-link" href="https://www.themoviedb.org/collection/${movie.collectionId}" target="_blank" rel="noopener">View series ↗</a>` : ''}
     </div>`;
 
+  currentModalMovieId = movie.id;
   document.getElementById('modal-overlay').classList.add('active');
+  // Silently enrich credits in background for thin/old records
+  if (apiKey && movie.tmdbId && ((movie.cast?.length || 0) <= 5 || !movie.writers?.length)) {
+    enrichMovieCredits(movie);
+  }
 }
 
-function closeModal() { document.getElementById('modal-overlay').classList.remove('active'); }
+function closeModal() {
+  currentModalMovieId = null;
+  document.getElementById('modal-overlay').classList.remove('active');
+}
+function searchByPerson(name) {
+  closeModal();
+  document.getElementById('search-input').value = name;
+  applyFilters();
+}
+
+async function enrichMovieCredits(movie) {
+  try {
+    const detail = await fetchMovieDetail(movie.tmdbId);
+    const fullCast = detail?.credits?.cast?.slice(0, 15).map(c => c.name) || [];
+    const writers = [...new Set((detail?.credits?.crew?.filter(c => ['Screenplay','Story','Writer','Screenstory'].includes(c.job)) || []).map(c => c.name))];
+    let changed = false;
+    if (fullCast.length > (movie.cast?.length || 0)) { movie.cast = fullCast; changed = true; }
+    if (writers.length && !(movie.writers?.length)) { movie.writers = writers; changed = true; }
+    if (changed) {
+      const idx = movies.findIndex(m => m.id === movie.id);
+      if (idx !== -1) { movies[idx].cast = movie.cast; movies[idx].writers = movie.writers; }
+      sbSaveMovie(movie).catch(() => {});
+      if (currentModalMovieId === movie.id) {
+        const el = document.getElementById('modal-credits');
+        if (el) el.innerHTML = buildCreditsHTML(movie);
+      }
+    }
+  } catch(e) { /* silent */ }
+}
+
 function filterToCollection(collectionId) {
   closeModal();
   document.getElementById('filter-collection').value = collectionId;
