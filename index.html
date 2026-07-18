@@ -2281,9 +2281,9 @@ async function toggleWatched(id, btn) {
 }
 
 // ── SERIES-AWARE RANDOM PICKER ────────────────────────────────────────────
-function buildCollectionGroups() {
+function buildCollectionGroups(movieList = movies) {
   const groups = {};
-  movies.filter(m => !m.notFound && m.collectionId).forEach(m => {
+  movieList.filter(m => !m.notFound && m.collectionId).forEach(m => {
     if (!groups[m.collectionId]) groups[m.collectionId] = { name: m.collectionName, movies: [] };
     groups[m.collectionId].movies.push(m);
   });
@@ -2294,14 +2294,15 @@ function buildCollectionGroups() {
 }
 
 function pickRandom() {
-  const groups = buildCollectionGroups();
+  const src = (filteredMovies && filteredMovies.length < movies.length) ? filteredMovies : movies;
+  const groups = buildCollectionGroups(src);
   const pool = [];
 
   // Add standalone unwatched movies (not in any tracked collection)
-  movies.filter(m => !m.notFound && !watchedSet.has(m.id) && !m.collectionId).forEach(m => pool.push({ movie: m, context: null }));
+  src.filter(m => !m.notFound && !watchedSet.has(m.id) && !m.collectionId).forEach(m => pool.push({ movie: m, context: null }));
 
   // Add movies not in TMDB collections but on shelf
-  movies.filter(m => !m.notFound && !watchedSet.has(m.id) && m.collectionId && !groups[m.collectionId]).forEach(m => pool.push({ movie: m, context: null }));
+  src.filter(m => !m.notFound && !watchedSet.has(m.id) && m.collectionId && !groups[m.collectionId]).forEach(m => pool.push({ movie: m, context: null }));
 
   // For each collection, add only the FIRST unwatched entry in order
   for (const [collId, group] of Object.entries(groups)) {
@@ -2309,7 +2310,10 @@ function pickRandom() {
     if (firstUnwatched) pool.push({ movie: firstUnwatched, context: group });
   }
 
-  if (!pool.length) { alert('You\'ve watched everything on your shelf! 🎉'); return; }
+  if (!pool.length) {
+    alert(src === movies ? 'You\'ve watched everything on your shelf! 🎉' : 'No unwatched films match your current filters!');
+    return;
+  }
 
   const picked = pool[Math.floor(Math.random() * pool.length)];
   currentRandomMovie = picked.movie;
@@ -2317,10 +2321,11 @@ function pickRandom() {
 }
 
 function rollAgain() {
-  const groups = buildCollectionGroups();
+  const src = (filteredMovies && filteredMovies.length < movies.length) ? filteredMovies : movies;
+  const groups = buildCollectionGroups(src);
   const pool = [];
-  movies.filter(m => !m.notFound && !watchedSet.has(m.id) && !m.collectionId).forEach(m => pool.push({ movie: m, context: null }));
-  movies.filter(m => !m.notFound && !watchedSet.has(m.id) && m.collectionId && !groups[m.collectionId]).forEach(m => pool.push({ movie: m, context: null }));
+  src.filter(m => !m.notFound && !watchedSet.has(m.id) && !m.collectionId).forEach(m => pool.push({ movie: m, context: null }));
+  src.filter(m => !m.notFound && !watchedSet.has(m.id) && m.collectionId && !groups[m.collectionId]).forEach(m => pool.push({ movie: m, context: null }));
   for (const [collId, group] of Object.entries(groups)) {
     const first = group.movies.find(m => !watchedSet.has(m.id));
     if (first) pool.push({ movie: first, context: group });
