@@ -261,15 +261,22 @@
   .modal-close:hover { color: var(--text); border-color: var(--text-muted); }
   @media (min-width: 640px) {
     #modal-overlay { padding: 40px; }
-    .modal { width: min(860px, calc(100vw - 80px)); display: flex; flex-direction: row; overflow: hidden; max-height: 85vh; }
-    .modal-poster-wrap { width: 280px; min-width: 280px; flex-shrink: 0; position: relative; align-self: stretch; border-radius: 12px 0 0 12px; overflow: hidden; }
-    .modal-poster { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: initial; object-fit: cover; border-radius: 0; display: block; }
-    .modal-poster-placeholder { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: initial; border-radius: 0; }
-    .modal-body { flex: 1; overflow-y: auto; min-width: 0; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
-    .modal-title { cursor: default; }
+    .modal { width: min(960px, calc(100vw - 80px)); display: flex; flex-direction: row; align-items: flex-start; overflow: hidden; max-height: 90vh; }
+    .modal-poster-wrap { width: 380px; min-width: 380px; flex-shrink: 0; border-radius: 12px 0 0 12px; overflow: hidden; }
+    .modal-poster { position: static; inset: auto; width: 100%; height: auto; aspect-ratio: 2/3; object-fit: cover; border-radius: 0; display: block; }
+    .modal-poster-placeholder { position: static; inset: auto; width: 100%; height: auto; aspect-ratio: 2/3; border-radius: 12px 0 0 12px; }
+    .modal-body { flex: 1; align-self: stretch; overflow-y: auto; min-width: 0; padding: 28px; gap: 14px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+    .modal-title { font-size: 2.4rem; cursor: default; }
     .modal-title:hover { color: var(--text); }
+    .modal-meta { font-size: 0.9rem; }
+    .modal-series-btn { font-size: 0.9rem; }
+    .modal-rating { font-size: 1.35rem; }
+    .modal-overview { font-size: 0.84rem; line-height: 1.7; }
+    .genre-pill { font-size: 0.72rem; }
     .modal-full-info { display: flex; }
-    .modal-divider { margin: 2px -18px; }
+    .modal-divider { margin: 2px -28px; }
+    .btn-watch-toggle { padding: 12px; font-size: 0.8rem; }
+    .modal-close { padding: 12px 16px; }
   }
 
   /* RANDOM MODAL */
