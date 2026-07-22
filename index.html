@@ -225,38 +225,24 @@
   /* MODAL */
   #modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 300; align-items: center; justify-content: center; padding: 24px; backdrop-filter: blur(4px); }
   #modal-overlay.active { display: flex; }
-  .modal { background: var(--surface); border: 1px solid var(--border); max-width: 760px; width: 100%; max-height: 90vh; overflow-y: auto; border-radius: 3px; animation: modalIn 0.25s ease; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+  .modal { background: var(--surface); border: 1px solid var(--border); width: 300px; max-width: calc(100vw - 48px); max-height: 90vh; overflow-y: auto; border-radius: 12px; animation: modalIn 0.25s ease; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
   @keyframes modalIn { from { opacity: 0; transform: scale(0.96) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-  .modal-hero { position: relative; display: flex; gap: 0; }
-  .modal-poster { width: 220px; flex-shrink: 0; object-fit: cover; aspect-ratio: 2/3; }
-  .modal-poster-placeholder { width: 220px; flex-shrink: 0; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 3rem; color: var(--text-dim); aspect-ratio: 2/3; }
-  .modal-hero-info { flex: 1; padding: 32px 32px 32px 28px; display: flex; flex-direction: column; justify-content: space-between; }
-  .modal-close { position: absolute; top: 16px; right: 16px; background: rgba(0,0,0,0.6); border: 1px solid var(--border); color: var(--text-muted); font-size: 1rem; cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 2px; transition: all 0.2s; z-index: 1; line-height: 1; font-family: monospace; }
+  .modal-poster { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; border-radius: 12px 12px 0 0; }
+  .modal-poster-placeholder { width: 100%; aspect-ratio: 2/3; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 3rem; color: var(--text-dim); border-radius: 12px 12px 0 0; }
+  .modal-body { padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.9rem; letter-spacing: 0.05em; line-height: 1; color: var(--text); }
+  .modal-meta { font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; }
+  .modal-series-btn { font-size: 0.78rem; color: var(--accent); background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; text-align: left; transition: opacity 0.15s; }
+  .modal-series-btn:hover { opacity: 0.75; text-decoration: underline; text-decoration-color: var(--accent); }
+  .modal-fmt-rating { display: flex; align-items: center; gap: 10px; }
+  .modal-rating { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; color: var(--accent); letter-spacing: 0.04em; }
+  .modal-bottom-row { display: flex; gap: 6px; }
+  .btn-watch-toggle { flex: 1; padding: 10px; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: all 0.2s; border-radius: 2px; }
+  .btn-watch-toggle:hover { background: rgba(232,197,71,0.1); }
+  .btn-watch-toggle.watched { background: rgba(74,222,128,0.1); color: #4ade80; border-color: rgba(74,222,128,0.45); }
+  .btn-watch-toggle.watched:hover { background: rgba(74,222,128,0.18); }
+  .modal-close { background: transparent; border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; padding: 10px 13px; border-radius: 2px; font-size: 0.9rem; transition: all 0.2s; line-height: 1; }
   .modal-close:hover { color: var(--text); border-color: var(--text-muted); }
-  .modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 2.2rem; letter-spacing: 0.05em; line-height: 1; color: var(--text); margin-bottom: 6px; }
-  .modal-original-title { font-family: 'DM Serif Display', serif; font-style: italic; font-size: 0.9rem; color: var(--text-muted); margin-bottom: 12px; }
-  .modal-badges { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
-  .modal-meta-row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; }
-  .modal-meta-item { display: flex; flex-direction: column; gap: 2px; }
-  .modal-meta-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--text-dim); }
-  .modal-meta-value { font-size: 0.85rem; color: var(--text); }
-  .modal-rating-big { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; color: var(--accent); line-height: 1; }
-  .modal-genres { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
-  .genre-pill { background: var(--surface2); border: 1px solid var(--border); padding: 4px 10px; border-radius: 2px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
-  .modal-overview { font-size: 0.85rem; color: var(--text-muted); line-height: 1.7; font-style: italic; }
-  .modal-actions { display: flex; gap: 10px; padding: 20px 32px; border-top: 1px solid var(--border); background: var(--surface2); flex-wrap: wrap; }
-  .btn-watch-toggle { flex: 1; padding: 12px; font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: all 0.2s; border-radius: 2px; }
-  .btn-watch-toggle:hover, .btn-watch-toggle.watched { background: var(--accent); color: #0a0a0a; }
-  .btn-tmdb-link { padding: 12px 20px; font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; border-radius: 2px; text-decoration: none; display: flex; align-items: center; }
-  .btn-tmdb-link:hover { border-color: var(--text-muted); color: var(--text); }
-
-  /* DISC LOCATION / COLLECTION STRIP */
-  .modal-disc-strip { padding: 14px 32px; background: rgba(232,197,71,0.05); border-top: 1px solid var(--border); font-size: 0.78rem; display: flex; flex-direction: column; gap: 8px; }
-  .disc-item { display: flex; align-items: baseline; gap: 8px; }
-  .disc-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.18em; color: var(--text-dim); white-space: nowrap; }
-  .disc-value { color: var(--text-muted); }
-  .disc-value strong { color: var(--accent); font-weight: 500; }
-  .disc-value em { color: var(--text-muted); font-style: italic; }
 
   /* RANDOM MODAL */
   #random-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 400; align-items: center; justify-content: center; backdrop-filter: blur(6px); }
@@ -344,11 +330,7 @@
     select { min-width: unset; width: 100%; }
     .filter-results { padding: 10px 16px; flex-direction: column; align-items: flex-start; gap: 8px; }
     #grid { padding: 16px; gap: 12px; --card-w: 140px; }
-    .modal-hero { flex-direction: column; }
-    .modal-poster { width: 100%; aspect-ratio: 16/9; object-fit: cover; }
-    .modal-poster-placeholder { width: 100%; aspect-ratio: 16/9; }
-    .modal-hero-info { padding: 20px; }
-    .modal-actions { padding: 16px; }
+    .modal { width: calc(100vw - 48px); }
     .random-modal { padding: 32px 20px; margin: 0 16px; }
     .fix-modal { margin: 0 16px; padding: 24px 20px; }
   }
@@ -2162,70 +2144,51 @@ function openModal(movie) {
     ? `<img class="modal-poster" src="${movie.posterLg || movie.poster}" alt="${escHtml(movie.title)}" onerror="this.outerHTML='<div class=\\'modal-poster-placeholder\\'>🎞</div>'">`
     : `<div class="modal-poster-placeholder">🎞</div>`;
 
-  // Format badge + label logo
-  const fmtBadge = fmtBadgeHTML(movie.format);
-  const vhsBadge = movie.hasVHS ? `<span class="vhs-note">📼 also on VHS</span>` : '';
-  const labelBadge = movie.label ? labelLogoHTML(movie.label, 'modal') : '';
+  // Meta line: Year · Runtime · Director
+  const metaParts = [
+    movie.year ? String(movie.year) : '',
+    movie.runtime ? `${movie.runtime} min` : '',
+    movie.director ? escHtml(movie.director) : ''
+  ].filter(Boolean);
+  const metaLine = metaParts.join(' · ');
 
-  // Series context
+  // Series line (clickable to filter collection)
   let seriesHTML = '';
   if (movie.collectionName && movie.collectionOrder) {
-    // Use stored TMDB total if available; fall back to count of owned films in collection
-    const collMovies = movies.filter(m => m.collectionId === movie.collectionId);
-    const total = movie.collectionTotal || collMovies.length;
+    const total = movie.collectionTotal || movies.filter(m => m.collectionId === movie.collectionId).length;
     const collId = escHtml(String(movie.collectionId));
-    seriesHTML = `<div class="modal-meta-item"><div class="modal-meta-label">Series</div><div class="modal-meta-value" style="color:var(--accent)">Film ${movie.collectionOrder} of ${total} · <button class="series-link" onclick="filterToCollection('${collId}')">${escHtml(displayCollName(movie.collectionName))} ↗</button></div></div>`;
+    seriesHTML = `<button class="modal-series-btn" onclick="filterToCollection('${collId}')">Film ${movie.collectionOrder} of ${total} · ${escHtml(displayCollName(movie.collectionName))}</button>`;
   } else if (movie.collectionName) {
-    const collId = escHtml(String(movie.collectionId || ''));
-    seriesHTML = `<div class="modal-meta-item"><div class="modal-meta-label">Series</div><div class="modal-meta-value" style="color:var(--accent)">${collId ? `<button class="series-link" onclick="filterToCollection('${collId}')">${escHtml(displayCollName(movie.collectionName))} ↗</button>` : escHtml(displayCollName(movie.collectionName))}</div></div>`;
+    const collId = movie.collectionId ? escHtml(String(movie.collectionId)) : '';
+    seriesHTML = collId
+      ? `<button class="modal-series-btn" onclick="filterToCollection('${collId}')">${escHtml(displayCollName(movie.collectionName))}</button>`
+      : `<span style="font-size:0.78rem;color:var(--accent)">${escHtml(displayCollName(movie.collectionName))}</span>`;
   }
 
-  // Disc location strip
-  let discStrip = '';
-  if (movie.boxSet || movie.hasVHS) {
-    const boxSetJs = (movie.boxSet || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-    const boxLine = movie.boxSet ? `<div class="disc-item"><span class="disc-label">Find disc in</span><span class="disc-value"><button class="disc-boxset-link" onclick="filterByBoxSet('${boxSetJs}')">${escHtml(movie.boxSet)}</button></span></div>` : '';
-    const vhsLine = movie.hasVHS ? `<div class="disc-item"><span class="disc-label">Also on</span><span class="disc-value"><em>📼 VHS</em></span></div>` : '';
-    discStrip = `<div class="modal-disc-strip">${boxLine}${vhsLine}</div>`;
-  }
+  // Format badge + rating
+  const fmtBadge = fmtBadgeHTML(movie.format);
+  const ratingHTML = movie.rating ? `<span class="modal-rating">★ ${movie.rating}</span>` : '';
 
   content.innerHTML = `
-    <div class="modal-hero">
-      ${posterHTML}
-      <div class="modal-hero-info">
-        <div>
-          <div class="modal-title">${escHtml(movie.displayTitle || movie.title)}</div>
-          ${movie.displayTitle && movie.displayTitle !== movie.title ? `<div class="modal-original-title">${escHtml(movie.title)}</div>` : movie.originalTitle && movie.originalTitle !== movie.title ? `<div class="modal-original-title">${escHtml(movie.originalTitle)}</div>` : ''}
-          <div class="modal-badges">${fmtBadge}${vhsBadge}${labelBadge}</div>
-          <div class="modal-genres">${(movie.genres || []).map(g => `<span class="genre-pill">${escHtml(g)}</span>`).join('')}</div>
-          <div class="modal-meta-row">
-            ${movie.year ? `<div class="modal-meta-item"><div class="modal-meta-label">Year</div><div class="modal-meta-value">${movie.year}</div></div>` : ''}
-            ${movie.rating ? `<div class="modal-meta-item"><div class="modal-meta-label">TMDB</div><div class="modal-rating-big">★ ${movie.rating}</div></div>` : ''}
-            ${movie.runtime ? `<div class="modal-meta-item"><div class="modal-meta-label">Runtime</div><div class="modal-meta-value">${movie.runtime} min</div></div>` : ''}
-            ${movie.director ? `<div class="modal-meta-item"><div class="modal-meta-label">Director</div><div class="modal-meta-value"><button class="person-chip" onclick="searchByPerson('${escJs(movie.director)}')">${escHtml(movie.director)}</button></div></div>` : ''}
-            ${seriesHTML}
-          </div>
-          <div id="modal-credits">${buildCreditsHTML(movie)}</div>
-        </div>
-        ${movie.overview ? `<div class="modal-overview">"${escHtml(movie.overview)}"</div>` : ''}
+    ${posterHTML}
+    <div class="modal-body">
+      <p class="modal-title">${escHtml(movie.displayTitle || movie.title)}</p>
+      ${metaLine ? `<p class="modal-meta">${metaLine}</p>` : ''}
+      ${seriesHTML}
+      <div class="modal-fmt-rating">
+        ${fmtBadge}
+        ${ratingHTML}
       </div>
-      <button class="modal-close" onclick="closeModal()">✕</button>
-    </div>
-    ${discStrip}
-    <div class="modal-actions">
-      <button class="btn-watch-toggle ${isWatched ? 'watched' : ''}" data-movie-id="${escHtml(String(movie.id))}" onclick="handleWatchToggle(this)">
-        ${isWatched ? '✓ Marked as Watched' : '○ Mark as Watched'}
-      </button>
-      ${movie.tmdbId ? `<a class="btn-tmdb-link" href="https://www.themoviedb.org/movie/${movie.tmdbId}" target="_blank" rel="noopener">View on TMDB ↗</a>` : ''}
-      ${movie.collectionId ? `<a class="btn-tmdb-link" href="https://www.themoviedb.org/collection/${movie.collectionId}" target="_blank" rel="noopener">View series ↗</a>` : ''}
+      <div class="modal-bottom-row">
+        <button class="btn-watch-toggle ${isWatched ? 'watched' : ''}" data-movie-id="${escHtml(String(movie.id))}" onclick="handleWatchToggle(this)">
+          ${isWatched ? '✓ Marked as watched' : '○ Mark as watched'}
+        </button>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
     </div>`;
 
   currentModalMovieId = movie.id;
   document.getElementById('modal-overlay').classList.add('active');
-  // Silently enrich credits in background for thin/old records
-  if (apiKey && movie.tmdbId && ((movie.cast?.length || 0) <= 5 || !movie.writers?.length)) {
-    enrichMovieCredits(movie);
-  }
 }
 
 function closeModal() {
