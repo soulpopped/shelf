@@ -239,6 +239,8 @@
   .modal.expanded .modal-title:hover { color: var(--text); }
   .modal-meta { font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; }
   .modal-series-btn { font-size: 0.78rem; color: var(--accent); background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; text-align: left; transition: opacity 0.15s; -webkit-appearance: none; appearance: none; box-shadow: none; }
+  .modal-director-btn { background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; transition: color 0.15s; -webkit-appearance: none; appearance: none; }
+  .modal-director-btn:hover { color: var(--accent); }
   .modal-series-btn:hover { opacity: 0.75; text-decoration: underline; text-decoration-color: var(--accent); }
   .modal-fmt-rating { display: flex; align-items: center; gap: 10px; }
   .modal-rating { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; color: var(--accent); letter-spacing: 0.04em; }
@@ -273,6 +275,9 @@
     .modal-rating { font-size: 1.35rem; }
     .modal-overview { font-size: 0.84rem; line-height: 1.7; }
     .genre-pill { font-size: 0.72rem; }
+    .cast-chip { font-size: 0.78rem; padding: 5px 12px; }
+    .cast-chips { gap: 6px; margin-top: 7px; }
+    .modal-meta-label { font-size: 0.68rem; }
     .modal-full-info { display: flex; }
     .modal-divider { margin: 2px -28px; }
     .btn-watch-toggle { padding: 12px; font-size: 0.8rem; }
@@ -2184,12 +2189,16 @@ function openModal(movie) {
   }</div>`;
 
   // Meta line: Year · Runtime · Director
-  const metaParts = [
+  const metaBaseParts = [
     movie.year ? String(movie.year) : '',
     movie.runtime ? `${movie.runtime} min` : '',
-    movie.director ? escHtml(movie.director) : ''
   ].filter(Boolean);
-  const metaLine = metaParts.join(' · ');
+  const directorBtn = movie.director
+    ? `<button class="modal-director-btn" onclick="searchByPerson('${escJs(movie.director)}')">${escHtml(movie.director)}</button>`
+    : '';
+  const metaLine = metaBaseParts.length && directorBtn
+    ? `${metaBaseParts.join(' · ')} · ${directorBtn}`
+    : (metaBaseParts.join(' · ') || directorBtn);
 
   // Series line
   let seriesHTML = '';
