@@ -241,6 +241,7 @@
   .modal-series-btn { font-size: 0.78rem; color: var(--accent); background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; text-align: left; transition: opacity 0.15s; -webkit-appearance: none; appearance: none; box-shadow: none; }
   .modal-director-btn { background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; transition: color 0.15s; -webkit-appearance: none; appearance: none; }
   .modal-director-btn:hover { color: var(--accent); }
+  body.public-mode .public-hidden { display: none !important; }
   .modal-series-btn:hover { opacity: 0.75; text-decoration: underline; text-decoration-color: var(--accent); }
   .modal-fmt-rating { display: flex; align-items: center; gap: 10px; }
   .modal-rating { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; color: var(--accent); letter-spacing: 0.04em; }
@@ -548,9 +549,9 @@
     <div class="stat"><div class="stat-num" id="stat-pct">0%</div><div class="stat-label">Progress</div></div>
   </div>
   <div class="header-actions">
-    <button class="btn btn-ghost" onclick="syncFromCloud()" title="Sync from cloud" style="padding:10px 12px">⟳</button>
-    <button class="btn btn-ghost" id="select-btn" onclick="toggleSelectionMode()" style="display:none">☰ Select</button>
-    <button class="btn btn-ghost" onclick="showImport()">+ Add Film</button>
+    <button class="btn btn-ghost public-hidden" onclick="syncFromCloud()" title="Sync from cloud" style="padding:10px 12px">⟳</button>
+    <button class="btn btn-ghost public-hidden" id="select-btn" onclick="toggleSelectionMode()" style="display:none">☰ Select</button>
+    <button class="btn btn-ghost public-hidden" onclick="showImport()">+ Add Film</button>
     <button class="btn btn-random" onclick="pickRandom()">⚄ Pick One For Me</button>
   </div>
 </header>
@@ -858,6 +859,7 @@ const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_IMG = 'https://image.tmdb.org/t/p/w342';
 const TMDB_IMG_LG = 'https://image.tmdb.org/t/p/w500';
 const STORAGE_KEY_APIKEY = 'shelf_apikey';
+const isPublic = new URLSearchParams(window.location.search).has('public');
 
 // ── LABEL LOGOS ────────────────────────────────────────────────────────────
 const LABEL_LOGOS = {
@@ -975,7 +977,7 @@ function checkPassword() {
   }
 }
 function checkAuth() {
-  if (localStorage.getItem(STORAGE_KEY_AUTH) === CORRECT_HASH) {
+  if (isPublic || localStorage.getItem(STORAGE_KEY_AUTH) === CORRECT_HASH) {
     document.getElementById('pw-overlay').classList.add('unlocked');
     return true;
   }
@@ -985,6 +987,7 @@ function checkAuth() {
 
 // ── INIT ───────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
+  if (isPublic) document.body.classList.add('public-mode');
   checkAuth();
   const savedKey = localStorage.getItem(STORAGE_KEY_APIKEY);
   if (savedKey) {
@@ -2242,9 +2245,7 @@ function openModal(movie) {
       </div>
       <div class="modal-divider"></div>
       <div class="modal-bottom-row">
-        <button class="btn-watch-toggle ${isWatched ? 'watched' : ''}" data-movie-id="${escHtml(String(movie.id))}" onclick="handleWatchToggle(this)">
-          ${isWatched ? '✓ Marked as watched' : '○ Mark as watched'}
-        </button>
+        ${!isPublic ? `<button class="btn-watch-toggle ${isWatched ? 'watched' : ''}" data-movie-id="${escHtml(String(movie.id))}" onclick="handleWatchToggle(this)">${isWatched ? '✓ Marked as watched' : '○ Mark as watched'}</button>` : ''}
         <button class="modal-close" onclick="closeModal()">✕</button>
       </div>
     </div>`;
