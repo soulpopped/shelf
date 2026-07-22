@@ -229,13 +229,28 @@
   @keyframes modalIn { from { opacity: 0; transform: scale(0.96) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
   .modal-poster { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; border-radius: 12px 12px 0 0; }
   .modal-poster-placeholder { width: 100%; aspect-ratio: 2/3; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 3rem; color: var(--text-dim); border-radius: 12px 12px 0 0; }
+  .modal.expanded .modal-poster { aspect-ratio: 16/9; }
+  .modal.expanded .modal-poster-placeholder { aspect-ratio: 16/9; }
   .modal-body { padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 10px; }
-  .modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.9rem; letter-spacing: 0.05em; line-height: 1; color: var(--text); }
+  .modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.9rem; letter-spacing: 0.05em; line-height: 1; color: var(--text); cursor: pointer; }
+  .modal-title:hover { color: var(--accent); }
+  .modal.expanded .modal-title { cursor: default; }
+  .modal.expanded .modal-title:hover { color: var(--text); }
   .modal-meta { font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; }
   .modal-series-btn { font-size: 0.78rem; color: var(--accent); background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; text-align: left; transition: opacity 0.15s; }
   .modal-series-btn:hover { opacity: 0.75; text-decoration: underline; text-decoration-color: var(--accent); }
   .modal-fmt-rating { display: flex; align-items: center; gap: 10px; }
   .modal-rating { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; color: var(--accent); letter-spacing: 0.04em; }
+  .modal-full-info { display: none; flex-direction: column; gap: 10px; }
+  .modal.expanded .modal-full-info { display: flex; }
+  .modal-genres { display: flex; flex-wrap: wrap; gap: 5px; }
+  .genre-pill { background: var(--surface2); border: 1px solid var(--border); padding: 3px 8px; border-radius: 2px; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
+  .modal-overview { font-size: 0.72rem; color: var(--text-muted); line-height: 1.65; }
+  .modal-meta-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--text-dim); }
+  .cast-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+  .cast-chip { font-size: 0.65rem; background: transparent; border: 1px solid var(--border); padding: 2px 7px; border-radius: 2px; color: var(--text-muted); cursor: pointer; font-family: inherit; transition: all 0.15s; }
+  .cast-chip:hover { border-color: var(--text-muted); color: var(--text); }
+  .modal-divider { height: 1px; background: var(--border); margin: 2px -18px; }
   .modal-bottom-row { display: flex; gap: 6px; }
   .btn-watch-toggle { flex: 1; padding: 10px; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: all 0.2s; border-radius: 2px; }
   .btn-watch-toggle:hover { background: rgba(232,197,71,0.1); }
@@ -243,6 +258,17 @@
   .btn-watch-toggle.watched:hover { background: rgba(74,222,128,0.18); }
   .modal-close { background: transparent; border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; padding: 10px 13px; border-radius: 2px; font-size: 0.9rem; transition: all 0.2s; line-height: 1; }
   .modal-close:hover { color: var(--text); border-color: var(--text-muted); }
+  @media (min-width: 640px) {
+    #modal-overlay { padding: 32px; }
+    .modal { width: 620px; flex-direction: row; overflow: hidden; max-height: 85vh; }
+    .modal-poster { width: 220px; min-width: 220px; aspect-ratio: initial; height: 100%; border-radius: 12px 0 0 12px; }
+    .modal-poster-placeholder { width: 220px; min-width: 220px; aspect-ratio: initial; align-self: stretch; border-radius: 12px 0 0 12px; }
+    .modal-body { flex: 1; overflow-y: auto; min-width: 0; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+    .modal-title { cursor: default; }
+    .modal-title:hover { color: var(--text); }
+    .modal-full-info { display: flex; }
+    .modal-divider { margin: 2px -18px; }
+  }
 
   /* RANDOM MODAL */
   #random-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 400; align-items: center; justify-content: center; backdrop-filter: blur(6px); }
@@ -330,7 +356,7 @@
     select { min-width: unset; width: 100%; }
     .filter-results { padding: 10px 16px; flex-direction: column; align-items: flex-start; gap: 8px; }
     #grid { padding: 16px; gap: 12px; --card-w: 140px; }
-    .modal { width: calc(100vw - 48px); }
+    .modal { width: min(300px, calc(100vw - 48px)); }
     .random-modal { padding: 32px 20px; margin: 0 16px; }
     .fix-modal { margin: 0 16px; padding: 24px 20px; }
   }
@@ -2140,6 +2166,8 @@ function buildCreditsHTML(movie) {
 function openModal(movie) {
   const isWatched = watchedSet.has(movie.id);
   const content = document.getElementById('modal-content');
+  content.classList.remove('expanded');
+
   const posterHTML = movie.posterLg || movie.poster
     ? `<img class="modal-poster" src="${movie.posterLg || movie.poster}" alt="${escHtml(movie.title)}" onerror="this.outerHTML='<div class=\\'modal-poster-placeholder\\'>🎞</div>'">`
     : `<div class="modal-poster-placeholder">🎞</div>`;
@@ -2152,7 +2180,7 @@ function openModal(movie) {
   ].filter(Boolean);
   const metaLine = metaParts.join(' · ');
 
-  // Series line (clickable to filter collection)
+  // Series line
   let seriesHTML = '';
   if (movie.collectionName && movie.collectionOrder) {
     const total = movie.collectionTotal || movies.filter(m => m.collectionId === movie.collectionId).length;
@@ -2169,16 +2197,30 @@ function openModal(movie) {
   const fmtBadge = fmtBadgeHTML(movie.format);
   const ratingHTML = movie.rating ? `<span class="modal-rating">★ ${movie.rating}</span>` : '';
 
+  // Full info section (genres, overview, credits)
+  const genresHTML = (movie.genres || []).length
+    ? `<div class="modal-genres">${movie.genres.map(g => `<span class="genre-pill">${escHtml(g)}</span>`).join('')}</div>`
+    : '';
+  const overviewHTML = movie.overview
+    ? `<div class="modal-overview">${escHtml(movie.overview)}</div>`
+    : '';
+
   content.innerHTML = `
     ${posterHTML}
     <div class="modal-body">
-      <p class="modal-title">${escHtml(movie.displayTitle || movie.title)}</p>
+      <p class="modal-title" onclick="expandModal()">${escHtml(movie.displayTitle || movie.title)}</p>
       ${metaLine ? `<p class="modal-meta">${metaLine}</p>` : ''}
       ${seriesHTML}
       <div class="modal-fmt-rating">
         ${fmtBadge}
         ${ratingHTML}
       </div>
+      <div class="modal-full-info" id="modal-full-info">
+        ${genresHTML}
+        ${overviewHTML}
+        <div id="modal-credits">${buildCreditsHTML(movie)}</div>
+      </div>
+      <div class="modal-divider"></div>
       <div class="modal-bottom-row">
         <button class="btn-watch-toggle ${isWatched ? 'watched' : ''}" data-movie-id="${escHtml(String(movie.id))}" onclick="handleWatchToggle(this)">
           ${isWatched ? '✓ Marked as watched' : '○ Mark as watched'}
@@ -2189,10 +2231,22 @@ function openModal(movie) {
 
   currentModalMovieId = movie.id;
   document.getElementById('modal-overlay').classList.add('active');
+  // Silently enrich credits in background
+  if (apiKey && movie.tmdbId && ((movie.cast?.length || 0) <= 5 || !movie.writers?.length)) {
+    enrichMovieCredits(movie);
+  }
+}
+
+function expandModal() {
+  if (window.innerWidth < 640) {
+    document.getElementById('modal-content').classList.add('expanded');
+  }
 }
 
 function closeModal() {
   currentModalMovieId = null;
+  const content = document.getElementById('modal-content');
+  if (content) content.classList.remove('expanded');
   document.getElementById('modal-overlay').classList.remove('active');
 }
 function searchByPerson(name) {
