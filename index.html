@@ -227,6 +227,7 @@
   #modal-overlay.active { display: flex; }
   .modal { background: var(--surface); border: 1px solid var(--border); width: 300px; max-width: calc(100vw - 48px); max-height: 90vh; overflow-y: auto; border-radius: 12px; animation: modalIn 0.25s ease; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
   @keyframes modalIn { from { opacity: 0; transform: scale(0.96) translateY(12px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+  .modal-poster-wrap { flex-shrink: 0; }
   .modal-poster { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; border-radius: 12px 12px 0 0; }
   .modal-poster-placeholder { width: 100%; aspect-ratio: 2/3; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 3rem; color: var(--text-dim); border-radius: 12px 12px 0 0; }
   .modal.expanded .modal-poster { aspect-ratio: 16/9; }
@@ -237,7 +238,7 @@
   .modal.expanded .modal-title { cursor: default; }
   .modal.expanded .modal-title:hover { color: var(--text); }
   .modal-meta { font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; }
-  .modal-series-btn { font-size: 0.78rem; color: var(--accent); background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; text-align: left; transition: opacity 0.15s; }
+  .modal-series-btn { font-size: 0.78rem; color: var(--accent); background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; text-align: left; transition: opacity 0.15s; -webkit-appearance: none; appearance: none; box-shadow: none; }
   .modal-series-btn:hover { opacity: 0.75; text-decoration: underline; text-decoration-color: var(--accent); }
   .modal-fmt-rating { display: flex; align-items: center; gap: 10px; }
   .modal-rating { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; color: var(--accent); letter-spacing: 0.04em; }
@@ -259,10 +260,11 @@
   .modal-close { background: transparent; border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; padding: 10px 13px; border-radius: 2px; font-size: 0.9rem; transition: all 0.2s; line-height: 1; }
   .modal-close:hover { color: var(--text); border-color: var(--text-muted); }
   @media (min-width: 640px) {
-    #modal-overlay { padding: 32px; }
-    .modal { width: 620px; flex-direction: row; overflow: hidden; max-height: 85vh; }
-    .modal-poster { width: 220px; min-width: 220px; aspect-ratio: initial; height: 100%; border-radius: 12px 0 0 12px; }
-    .modal-poster-placeholder { width: 220px; min-width: 220px; aspect-ratio: initial; align-self: stretch; border-radius: 12px 0 0 12px; }
+    #modal-overlay { padding: 40px; }
+    .modal { width: min(860px, calc(100vw - 80px)); display: flex; flex-direction: row; overflow: hidden; max-height: 85vh; }
+    .modal-poster-wrap { width: 280px; min-width: 280px; flex-shrink: 0; position: relative; align-self: stretch; border-radius: 12px 0 0 12px; overflow: hidden; }
+    .modal-poster { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: initial; object-fit: cover; border-radius: 0; display: block; }
+    .modal-poster-placeholder { position: absolute; inset: 0; width: 100%; height: 100%; aspect-ratio: initial; border-radius: 0; }
     .modal-body { flex: 1; overflow-y: auto; min-width: 0; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
     .modal-title { cursor: default; }
     .modal-title:hover { color: var(--text); }
@@ -356,7 +358,7 @@
     select { min-width: unset; width: 100%; }
     .filter-results { padding: 10px 16px; flex-direction: column; align-items: flex-start; gap: 8px; }
     #grid { padding: 16px; gap: 12px; --card-w: 140px; }
-    .modal { width: min(300px, calc(100vw - 48px)); }
+    .modal { width: calc(100vw - 32px); }
     .random-modal { padding: 32px 20px; margin: 0 16px; }
     .fix-modal { margin: 0 16px; padding: 24px 20px; }
   }
@@ -2168,9 +2170,11 @@ function openModal(movie) {
   const content = document.getElementById('modal-content');
   content.classList.remove('expanded');
 
-  const posterHTML = movie.posterLg || movie.poster
-    ? `<img class="modal-poster" src="${movie.posterLg || movie.poster}" alt="${escHtml(movie.title)}" onerror="this.outerHTML='<div class=\\'modal-poster-placeholder\\'>🎞</div>'">`
-    : `<div class="modal-poster-placeholder">🎞</div>`;
+  const posterHTML = `<div class="modal-poster-wrap">${
+    movie.posterLg || movie.poster
+      ? `<img class="modal-poster" src="${movie.posterLg || movie.poster}" alt="${escHtml(movie.title)}" onerror="this.outerHTML='<div class=\\'modal-poster-placeholder\\'>🎞</div>'">`
+      : `<div class="modal-poster-placeholder">🎞</div>`
+  }</div>`;
 
   // Meta line: Year · Runtime · Director
   const metaParts = [
@@ -2239,7 +2243,7 @@ function openModal(movie) {
 
 function expandModal() {
   if (window.innerWidth < 640) {
-    document.getElementById('modal-content').classList.add('expanded');
+    document.getElementById('modal-content').classList.toggle('expanded');
   }
 }
 
