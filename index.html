@@ -366,20 +366,26 @@
   .year-chip:hover { border-color: var(--text-muted); color: var(--text); }
   .year-chip.active { border-color: var(--accent); color: var(--accent); background: rgba(232,197,71,0.08); }
 
-  /* MPAA FILTER (in filter bar) */
-  .mpaa-filter-chips { display: flex; gap: 4px; flex-wrap: wrap; }
-  .mpaa-filter-chip { padding: 5px 7px; border: 1px solid var(--border); border-radius: 2px; font-size: 0.6rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); cursor: pointer; background: none; font-family: 'DM Sans', sans-serif; transition: all 0.15s; white-space: nowrap; }
-  .mpaa-filter-chip:hover { border-color: var(--text-muted); color: var(--text); }
-  .mpaa-filter-chip.active { border-color: var(--accent); color: var(--accent); background: rgba(232,197,71,0.08); }
+  /* MPAA FILTER DROPDOWN (in filter bar) */
+  .mpaa-dropdown { position: relative; }
+  .mpaa-dropdown-btn { background: var(--bg); border: 1px solid var(--border); color: var(--text-muted); font-family: 'DM Sans', sans-serif; font-size: 16px; padding: 8px 32px 8px 12px; border-radius: 2px; outline: none; cursor: pointer; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%237a7670' stroke-width='1.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; min-width: 140px; transition: border-color 0.2s, color 0.2s; text-align: left; white-space: nowrap; font-weight: 300; }
+  .mpaa-dropdown-btn:hover { border-color: var(--text-muted); color: var(--text); }
+  .mpaa-dropdown-btn.active { border-color: var(--accent); color: var(--accent); }
+  .mpaa-dropdown-menu { display: none; position: absolute; top: calc(100% + 2px); left: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 2px; z-index: 150; min-width: 160px; padding: 4px 0; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+  .mpaa-dropdown-menu.open { display: block; }
+  .mpaa-dd-item { display: flex; align-items: center; gap: 8px; padding: 7px 14px; font-size: 0.78rem; color: var(--text-muted); cursor: pointer; user-select: none; transition: background 0.1s, color 0.1s; }
+  .mpaa-dd-item:hover { background: var(--surface2); color: var(--text); }
+  .mpaa-dd-item input[type="checkbox"] { accent-color: var(--accent); width: 13px; height: 13px; cursor: pointer; flex-shrink: 0; }
 
-  /* MPAA CHIPS (in modal) */
-  .mpaa-modal-chips { display: flex; gap: 5px; flex-wrap: wrap; }
-  .mpaa-modal-chip { padding: 4px 9px; border: 1px solid var(--border); border-radius: 2px; font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); cursor: pointer; background: none; font-family: 'DM Sans', sans-serif; transition: all 0.15s; white-space: nowrap; }
-  .mpaa-modal-chip:hover { border-color: var(--text-muted); color: var(--text); }
-  .mpaa-modal-chip.active { border-color: var(--accent); color: var(--accent); background: rgba(232,197,71,0.08); }
+  /* MPAA STATIC BADGE (in modal) */
+  .mpaa-badge { display: inline-block; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 6px; border: 1px solid var(--text-dim); border-radius: 2px; color: var(--text-muted); vertical-align: middle; }
 
-  /* BOX SET IN MODAL */
-  .modal-boxset { font-size: 0.72rem; color: var(--text-dim); }
+  /* SHELF LOCATION FOOTER (in modal) */
+  .modal-shelf-footer { margin: 8px -18px -16px; padding: 10px 18px; background: rgba(232,197,71,0.1); border-top: 1px solid rgba(232,197,71,0.22); font-size: 0.7rem; color: var(--text-muted); letter-spacing: 0.02em; }
+  .modal-shelf-footer .disc-boxset-link { color: var(--accent); }
+  @media (min-width: 640px) {
+    .modal-shelf-footer { margin: 8px -28px -28px; }
+  }
 
   /* MOBILE */
   @media (max-width: 768px) {
@@ -521,6 +527,18 @@
           <option value="A24">A24</option>
           <option value="MUBI">MUBI</option>
           <option value="Oscilloscope">Oscilloscope</option>
+        </select>
+      </div>
+      <div style="margin-top:10px">
+        <div class="add-form-label" style="margin-bottom:6px">MPAA Rating</div>
+        <select id="fix-mpaa-select" style="width:100%">
+          <option value="">— No Data —</option>
+          <option value="G">G</option>
+          <option value="PG">PG</option>
+          <option value="PG-13">PG-13</option>
+          <option value="R">R</option>
+          <option value="NC-17X">NC-17/X</option>
+          <option value="Unrated">Unrated</option>
         </select>
       </div>
       <div class="vhs-row" style="margin-top:10px">
@@ -804,14 +822,17 @@
     </div>
     <div class="filter-group">
       <div class="filter-label">Rating</div>
-      <div class="mpaa-filter-chips">
-        <button class="mpaa-filter-chip" data-rating="G" onclick="toggleMpaaFilter('G',this)">G</button>
-        <button class="mpaa-filter-chip" data-rating="PG" onclick="toggleMpaaFilter('PG',this)">PG</button>
-        <button class="mpaa-filter-chip" data-rating="PG-13" onclick="toggleMpaaFilter('PG-13',this)">PG-13</button>
-        <button class="mpaa-filter-chip" data-rating="R" onclick="toggleMpaaFilter('R',this)">R</button>
-        <button class="mpaa-filter-chip" data-rating="NC-17X" onclick="toggleMpaaFilter('NC-17X',this)">NC-17/X</button>
-        <button class="mpaa-filter-chip" data-rating="Unrated" onclick="toggleMpaaFilter('Unrated',this)">Unrated</button>
-        <button class="mpaa-filter-chip" data-rating="__nodata__" onclick="toggleMpaaFilter('__nodata__',this)">No Data</button>
+      <div class="mpaa-dropdown" id="mpaa-dropdown">
+        <button class="mpaa-dropdown-btn" id="mpaa-dropdown-btn" onclick="toggleMpaaDropdown(event)">All Ratings</button>
+        <div class="mpaa-dropdown-menu" id="mpaa-dropdown-menu">
+          <label class="mpaa-dd-item"><input type="checkbox" value="G" onchange="onMpaaCheck(this)"> G</label>
+          <label class="mpaa-dd-item"><input type="checkbox" value="PG" onchange="onMpaaCheck(this)"> PG</label>
+          <label class="mpaa-dd-item"><input type="checkbox" value="PG-13" onchange="onMpaaCheck(this)"> PG-13</label>
+          <label class="mpaa-dd-item"><input type="checkbox" value="R" onchange="onMpaaCheck(this)"> R</label>
+          <label class="mpaa-dd-item"><input type="checkbox" value="NC-17X" onchange="onMpaaCheck(this)"> NC-17/X</label>
+          <label class="mpaa-dd-item"><input type="checkbox" value="Unrated" onchange="onMpaaCheck(this)"> Unrated</label>
+          <label class="mpaa-dd-item"><input type="checkbox" value="__nodata__" onchange="onMpaaCheck(this)"> No Data</label>
+        </div>
       </div>
     </div>
     <div class="filter-group">
@@ -2001,21 +2022,22 @@ function normalizeMpaa(cert) {
   return null;
 }
 
-function toggleMpaaFilter(val, btn) {
-  if (mpaaFilterSet.has(val)) { mpaaFilterSet.delete(val); btn.classList.remove('active'); }
-  else { mpaaFilterSet.add(val); btn.classList.add('active'); }
+function toggleMpaaDropdown(e) {
+  e.stopPropagation();
+  document.getElementById('mpaa-dropdown-menu').classList.toggle('open');
+}
+function onMpaaCheck(checkbox) {
+  if (checkbox.checked) mpaaFilterSet.add(checkbox.value);
+  else mpaaFilterSet.delete(checkbox.value);
+  updateMpaaDropdownBtn();
   applyFilters();
 }
-
-function setModalMpaa(movieId, rating) {
-  const movie = movies.find(m => m.id === movieId);
-  if (!movie) return;
-  movie.mpaaRating = movie.mpaaRating === rating ? null : rating;
-  document.querySelectorAll('.mpaa-modal-chip').forEach(chip => {
-    const chipRating = chip.textContent === 'NC-17/X' ? 'NC-17X' : chip.textContent;
-    chip.classList.toggle('active', chipRating === movie.mpaaRating);
-  });
-  sbSaveMovie(movie).catch(e => console.warn('MPAA save failed', e));
+function updateMpaaDropdownBtn() {
+  const count = mpaaFilterSet.size;
+  const btn = document.getElementById('mpaa-dropdown-btn');
+  if (!btn) return;
+  btn.textContent = count > 0 ? `Rating (${count})` : 'All Ratings';
+  btn.classList.toggle('active', count > 0);
 }
 
 // ── YEAR SUB-FILTER ───────────────────────────────────────────────────────
@@ -2231,7 +2253,8 @@ function resetFilters() {
   currentBoxSetFilter = '';
   selectedYear = null;
   mpaaFilterSet.clear();
-  document.querySelectorAll('.mpaa-filter-chip').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('#mpaa-dropdown-menu input[type="checkbox"]').forEach(c => c.checked = false);
+  updateMpaaDropdownBtn();
   buildYearSubRow();
   applyFilters();
 }
@@ -2365,19 +2388,12 @@ function openModal(movie) {
     ? `<div class="modal-overview">${escHtml(movie.overview)}</div>`
     : '';
 
-  // MPAA rating chips
-  const MPAA_OPTS = ['G', 'PG', 'PG-13', 'R', 'NC-17X', 'Unrated'];
-  const mpaaChips = MPAA_OPTS.map(r => {
-    const lbl = r === 'NC-17X' ? 'NC-17/X' : r;
-    const act = movie.mpaaRating === r;
-    const click = isPublic ? '' : `onclick="setModalMpaa('${escJs(String(movie.id))}','${r}')"`;
-    const style = isPublic ? 'style="cursor:default"' : '';
-    return `<button class="mpaa-modal-chip${act ? ' active' : ''}" ${click} ${style}>${lbl}</button>`;
-  }).join('');
-  const mpaaHTML = `<div><div class="modal-meta-label" style="margin-bottom:5px">MPAA Rating</div><div class="mpaa-modal-chips">${mpaaChips}</div></div>`;
-  // Shelf location (box set)
-  const boxSetHTML = movie.boxSet
-    ? `<div class="modal-boxset">📦 <button class="disc-boxset-link" onclick="filterByBoxSet('${escJs(movie.boxSet)}')">${escHtml(movie.boxSet)}</button></div>`
+  // MPAA static badge (if rating exists)
+  const mpaaLabel = movie.mpaaRating === 'NC-17X' ? 'NC-17/X' : movie.mpaaRating;
+  const mpaaRatingBadge = movie.mpaaRating ? `<span class="mpaa-badge">${escHtml(mpaaLabel)}</span>` : '';
+  // Shelf location footer
+  const boxSetFooter = movie.boxSet
+    ? `<div class="modal-shelf-footer">Found in: <button class="disc-boxset-link" onclick="filterByBoxSet('${escJs(movie.boxSet)}')">${escHtml(movie.boxSet)}</button></div>`
     : '';
 
   content.innerHTML = `
@@ -2389,19 +2405,19 @@ function openModal(movie) {
       <div class="modal-fmt-rating">
         ${fmtBadge}
         ${ratingHTML}
+        ${mpaaRatingBadge}
       </div>
-      ${mpaaHTML}
       <div class="modal-full-info" id="modal-full-info">
         ${genresHTML}
         ${overviewHTML}
         <div id="modal-credits">${buildCreditsHTML(movie)}</div>
       </div>
-      ${boxSetHTML}
       <div class="modal-divider"></div>
       <div class="modal-bottom-row">
         ${!isPublic ? `<button class="btn-watch-toggle ${isWatched ? 'watched' : ''}" data-movie-id="${escHtml(String(movie.id))}" onclick="handleWatchToggle(this)">${isWatched ? '✓ Marked as watched' : '○ Mark as watched'}</button>` : ''}
         <button class="modal-close" onclick="closeModal()">✕</button>
       </div>
+      ${boxSetFooter}
     </div>`;
 
   currentModalMovieId = movie.id;
@@ -2619,6 +2635,7 @@ function openFixModal(movieId) {
   document.getElementById('fix-collection-order').value = movie.collectionOrder || '';
   document.getElementById('fix-collection-total').value = movie.collectionTotal || '';
   document.getElementById('fix-label-select').value = movie.label || '';
+  document.getElementById('fix-mpaa-select').value = movie.mpaaRating || '';
   document.getElementById('fix-vhs-check').checked = movie.hasVHS || false;
   document.getElementById('fix-status').textContent = '';
   document.getElementById('fix-art-url').value = '';
@@ -2698,6 +2715,7 @@ async function saveDiscInfo() {
   if (!isNaN(orderVal) && orderVal > 0) movies[idx].collectionOrder = orderVal;
   if (!isNaN(totalVal) && totalVal > 0) movies[idx].collectionTotal = totalVal;
   movies[idx].label = document.getElementById('fix-label-select').value || null;
+  movies[idx].mpaaRating = document.getElementById('fix-mpaa-select').value || null;
   try {
     await sbSaveMovie(movies[idx]);
     setFixStatus('✓ Disc info saved');
@@ -2852,6 +2870,13 @@ document.addEventListener('keydown', e => {
 });
 
 window.addEventListener('resize', updateHeaderHeight);
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#mpaa-dropdown')) {
+    const menu = document.getElementById('mpaa-dropdown-menu');
+    if (menu) menu.classList.remove('open');
+  }
+});
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && movies.length > 0) {
