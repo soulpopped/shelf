@@ -358,6 +358,29 @@
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
 
+  /* YEAR SUB-FILTER */
+  #year-sub-row { display: none; padding: 8px 48px 12px; background: var(--surface); border-bottom: 1px solid var(--border); gap: 6px; align-items: center; flex-wrap: wrap; }
+  #year-sub-row.visible { display: flex; }
+  .year-sub-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.18em; color: var(--text-muted); margin-right: 4px; flex-shrink: 0; }
+  .year-chip { padding: 4px 10px; border: 1px solid var(--border); border-radius: 2px; font-size: 0.68rem; color: var(--text-muted); cursor: pointer; background: none; font-family: 'DM Sans', sans-serif; transition: all 0.15s; letter-spacing: 0.04em; }
+  .year-chip:hover { border-color: var(--text-muted); color: var(--text); }
+  .year-chip.active { border-color: var(--accent); color: var(--accent); background: rgba(232,197,71,0.08); }
+
+  /* MPAA FILTER (in filter bar) */
+  .mpaa-filter-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+  .mpaa-filter-chip { padding: 5px 7px; border: 1px solid var(--border); border-radius: 2px; font-size: 0.6rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); cursor: pointer; background: none; font-family: 'DM Sans', sans-serif; transition: all 0.15s; white-space: nowrap; }
+  .mpaa-filter-chip:hover { border-color: var(--text-muted); color: var(--text); }
+  .mpaa-filter-chip.active { border-color: var(--accent); color: var(--accent); background: rgba(232,197,71,0.08); }
+
+  /* MPAA CHIPS (in modal) */
+  .mpaa-modal-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+  .mpaa-modal-chip { padding: 4px 9px; border: 1px solid var(--border); border-radius: 2px; font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); cursor: pointer; background: none; font-family: 'DM Sans', sans-serif; transition: all 0.15s; white-space: nowrap; }
+  .mpaa-modal-chip:hover { border-color: var(--text-muted); color: var(--text); }
+  .mpaa-modal-chip.active { border-color: var(--accent); color: var(--accent); background: rgba(232,197,71,0.08); }
+
+  /* BOX SET IN MODAL */
+  .modal-boxset { font-size: 0.72rem; color: var(--text-dim); }
+
   /* MOBILE */
   @media (max-width: 768px) {
     header { padding: max(12px, env(safe-area-inset-top)) 16px 12px; flex-wrap: wrap; gap: 10px; position: fixed; top: 0; left: 0; right: 0; }
@@ -374,6 +397,7 @@
     .modal { width: calc(100vw - 32px); }
     .random-modal { padding: 32px 20px; margin: 0 16px; }
     .fix-modal { margin: 0 16px; padding: 24px 20px; }
+    #year-sub-row { padding: 8px 16px 12px; }
   }
 </style>
 </head>
@@ -776,7 +800,19 @@
     </div>
     <div class="filter-group">
       <div class="filter-label">Decade</div>
-      <select id="filter-decade" onchange="applyFilters()"><option value="">All Decades</option></select>
+      <select id="filter-decade" onchange="onDecadeChange()"><option value="">All Decades</option></select>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Rating</div>
+      <div class="mpaa-filter-chips">
+        <button class="mpaa-filter-chip" data-rating="G" onclick="toggleMpaaFilter('G',this)">G</button>
+        <button class="mpaa-filter-chip" data-rating="PG" onclick="toggleMpaaFilter('PG',this)">PG</button>
+        <button class="mpaa-filter-chip" data-rating="PG-13" onclick="toggleMpaaFilter('PG-13',this)">PG-13</button>
+        <button class="mpaa-filter-chip" data-rating="R" onclick="toggleMpaaFilter('R',this)">R</button>
+        <button class="mpaa-filter-chip" data-rating="NC-17X" onclick="toggleMpaaFilter('NC-17X',this)">NC-17/X</button>
+        <button class="mpaa-filter-chip" data-rating="Unrated" onclick="toggleMpaaFilter('Unrated',this)">Unrated</button>
+        <button class="mpaa-filter-chip" data-rating="__nodata__" onclick="toggleMpaaFilter('__nodata__',this)">No Data</button>
+      </div>
     </div>
     <div class="filter-group">
       <div class="filter-label">Format</div>
@@ -824,6 +860,11 @@
     </div>
   </div>
 
+  <!-- YEAR SUB-FILTER -->
+  <div id="year-sub-row">
+    <span class="year-sub-label">Year</span>
+  </div>
+
   <div class="filter-results">
     <span id="results-count">Showing all films</span>
     <div class="sort-bar">
@@ -853,6 +894,8 @@ let boxSetMode = null; // {boxSet, label, format} or null
 let selectionMode = false;
 let selectedIds = new Set();
 let currentBoxSetFilter = '';
+let mpaaFilterSet = new Set();
+let selectedYear = null;
 let apiKey = '';
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
@@ -1326,8 +1369,15 @@ async function fetchMovieForShelf(titleStr, year) {
   const result = data.results[0];
   await sleep(80);
   const detail = await fetchMovieDetail(result.id);
-
-  return buildMovieObject(result, detail, titleStr);
+  const movie = buildMovieObject(result, detail, titleStr);
+  try {
+    const rdRes = await fetch(`${TMDB_BASE}/movie/${result.id}/release_dates?api_key=${apiKey}`);
+    const rdData = await rdRes.json();
+    const usEntry = rdData.results?.find(e => e.iso_3166_1 === 'US');
+    const theatrical = usEntry?.release_dates?.find(d => d.type === 3);
+    if (theatrical?.certification) movie.mpaaRating = normalizeMpaa(theatrical.certification);
+  } catch(e) { /* silent */ }
+  return movie;
 }
 
 async function fetchMovieDetail(id) {
@@ -1380,6 +1430,7 @@ function buildMovieObject(result, detail, searchTitle) {
     hasVHS: false,     // overridden by caller
     boxSet: null,      // overridden by caller
     label: null,       // overridden by caller
+    mpaaRating: null,  // overridden after TMDB /release_dates fetch
     dateAdded: new Date().toISOString(),
     notFound: false
   };
@@ -1587,6 +1638,13 @@ async function addSelectedFilm(stayInBoxSet = false) {
   try {
     const detail = await fetchMovieDetail(r.id);
     const movie = buildMovieObject(r, detail, r.title);
+    try {
+      const rdRes = await fetch(`${TMDB_BASE}/movie/${r.id}/release_dates?api_key=${apiKey}`);
+      const rdData = await rdRes.json();
+      const usEntry = rdData.results?.find(e => e.iso_3166_1 === 'US');
+      const theatrical = usEntry?.release_dates?.find(d => d.type === 3);
+      if (theatrical?.certification) movie.mpaaRating = normalizeMpaa(theatrical.certification);
+    } catch(e) { /* silent */ }
     movie.format = format;
     movie.hasVHS = hasVHS;
     movie.boxSet = boxSet;
@@ -1705,6 +1763,7 @@ function openBulkEditModal() {
   document.getElementById('bulk-boxset').value = '';
   document.getElementById('bulk-label').value = '';
   document.getElementById('bulk-format').value = '';
+  document.getElementById('bulk-mpaa').value = '';
   document.getElementById('bulk-watched').value = '';
   document.getElementById('bulk-save-status').textContent = '';
   document.getElementById('bulk-modal').classList.add('open');
@@ -1718,10 +1777,11 @@ async function saveBulkEdit() {
   const boxSet = document.getElementById('bulk-boxset').value.trim();
   const labelVal = document.getElementById('bulk-label').value;
   const format = document.getElementById('bulk-format').value;
+  const mpaaVal = document.getElementById('bulk-mpaa').value;
   const watchedVal = document.getElementById('bulk-watched').value;
   const statusEl = document.getElementById('bulk-save-status');
 
-  if (!boxSet && !labelVal && !format && !watchedVal) {
+  if (!boxSet && !labelVal && !format && !mpaaVal && !watchedVal) {
     statusEl.textContent = 'Nothing to save — fill in at least one field.';
     return;
   }
@@ -1731,12 +1791,14 @@ async function saveBulkEdit() {
 
   try {
     // Update movie metadata if any metadata field changed
-    if (boxSet || labelVal || format) {
+    if (boxSet || labelVal || format || mpaaVal) {
       toUpdate.forEach(m => {
         if (boxSet) m.boxSet = boxSet;
         if (labelVal === '__clear__') m.label = '';
         else if (labelVal) m.label = labelVal;
         if (format) m.format = format;
+        if (mpaaVal === '__clear__') m.mpaaRating = null;
+        else if (mpaaVal) m.mpaaRating = mpaaVal;
       });
       await sbFetch('shelf_movies', {
         method: 'POST',
@@ -1926,6 +1988,72 @@ async function syncFromCloud() {
   }
 }
 
+// ── MPAA HELPERS ──────────────────────────────────────────────────────────
+function normalizeMpaa(cert) {
+  if (!cert) return null;
+  const c = cert.trim().toUpperCase();
+  if (c === 'G') return 'G';
+  if (c === 'PG') return 'PG';
+  if (c === 'PG-13') return 'PG-13';
+  if (c === 'R') return 'R';
+  if (c === 'NC-17' || c === 'X') return 'NC-17X';
+  if (['NR', 'UNRATED', 'NOT RATED', 'UR'].includes(c)) return 'Unrated';
+  return null;
+}
+
+function toggleMpaaFilter(val, btn) {
+  if (mpaaFilterSet.has(val)) { mpaaFilterSet.delete(val); btn.classList.remove('active'); }
+  else { mpaaFilterSet.add(val); btn.classList.add('active'); }
+  applyFilters();
+}
+
+function setModalMpaa(movieId, rating) {
+  const movie = movies.find(m => m.id === movieId);
+  if (!movie) return;
+  movie.mpaaRating = movie.mpaaRating === rating ? null : rating;
+  document.querySelectorAll('.mpaa-modal-chip').forEach(chip => {
+    const chipRating = chip.textContent === 'NC-17/X' ? 'NC-17X' : chip.textContent;
+    chip.classList.toggle('active', chipRating === movie.mpaaRating);
+  });
+  sbSaveMovie(movie).catch(e => console.warn('MPAA save failed', e));
+}
+
+// ── YEAR SUB-FILTER ───────────────────────────────────────────────────────
+function onDecadeChange() {
+  selectedYear = null;
+  buildYearSubRow();
+  applyFilters();
+}
+
+function buildYearSubRow() {
+  const decade = document.getElementById('filter-decade').value;
+  const row = document.getElementById('year-sub-row');
+  if (!decade) {
+    row.classList.remove('visible');
+    row.innerHTML = '<span class="year-sub-label">Year</span>';
+    return;
+  }
+  const decadeInt = parseInt(decade);
+  const years = new Set();
+  movies.filter(m => !m.notFound && m.year && m.year !== '—').forEach(m => {
+    const y = parseInt(m.year);
+    if (!isNaN(y) && Math.floor(y / 10) * 10 === decadeInt) years.add(y);
+  });
+  if (!years.size) { row.classList.remove('visible'); return; }
+  const sortedYears = [...years].sort((a, b) => a - b);
+  row.innerHTML = '<span class="year-sub-label">Year</span>' +
+    sortedYears.map(y =>
+      `<button class="year-chip${selectedYear === y ? ' active' : ''}" onclick="setYearFilter(${y})">${y}</button>`
+    ).join('');
+  row.classList.add('visible');
+}
+
+function setYearFilter(year) {
+  selectedYear = selectedYear === year ? null : year;
+  buildYearSubRow();
+  applyFilters();
+}
+
 // ── FILTER OPTIONS ────────────────────────────────────────────────────────
 function buildFilterOptions() {
   const genres = new Set();
@@ -1997,11 +2125,16 @@ function applyFilters() {
         !(m.writers?.some(c => normalizeSearch(c).includes(search)))) return false;
     if (genre && !m.genres?.includes(genre)) return false;
     if (decade && Math.floor(parseInt(m.year) / 10) * 10 !== parseInt(decade)) return false;
+    if (selectedYear && parseInt(m.year) !== selectedYear) return false;
     if (format && m.format !== format) return false;
     if (label && m.label !== label) return false;
     if (collection && m.collectionId !== collection) return false;
     if (currentBoxSetFilter && m.boxSet !== currentBoxSetFilter) return false;
     if (runtime < 300 && m.runtime && m.runtime > runtime) return false;
+    if (mpaaFilterSet.size > 0) {
+      const rating = m.mpaaRating || null;
+      if (!((mpaaFilterSet.has('__nodata__') && !rating) || (rating && mpaaFilterSet.has(rating)))) return false;
+    }
     return matchStatus(m);
   });
 
@@ -2096,6 +2229,10 @@ function resetFilters() {
   document.querySelector('[data-status="all"]').classList.add('active');
   currentStatusFilter = 'all';
   currentBoxSetFilter = '';
+  selectedYear = null;
+  mpaaFilterSet.clear();
+  document.querySelectorAll('.mpaa-filter-chip').forEach(c => c.classList.remove('active'));
+  buildYearSubRow();
   applyFilters();
 }
 
@@ -2228,6 +2365,21 @@ function openModal(movie) {
     ? `<div class="modal-overview">${escHtml(movie.overview)}</div>`
     : '';
 
+  // MPAA rating chips
+  const MPAA_OPTS = ['G', 'PG', 'PG-13', 'R', 'NC-17X', 'Unrated'];
+  const mpaaChips = MPAA_OPTS.map(r => {
+    const lbl = r === 'NC-17X' ? 'NC-17/X' : r;
+    const act = movie.mpaaRating === r;
+    const click = isPublic ? '' : `onclick="setModalMpaa('${escJs(String(movie.id))}','${r}')"`;
+    const style = isPublic ? 'style="cursor:default"' : '';
+    return `<button class="mpaa-modal-chip${act ? ' active' : ''}" ${click} ${style}>${lbl}</button>`;
+  }).join('');
+  const mpaaHTML = `<div><div class="modal-meta-label" style="margin-bottom:5px">MPAA Rating</div><div class="mpaa-modal-chips">${mpaaChips}</div></div>`;
+  // Shelf location (box set)
+  const boxSetHTML = movie.boxSet
+    ? `<div class="modal-boxset">📦 <button class="disc-boxset-link" onclick="filterByBoxSet('${escJs(movie.boxSet)}')">${escHtml(movie.boxSet)}</button></div>`
+    : '';
+
   content.innerHTML = `
     ${posterHTML}
     <div class="modal-body">
@@ -2238,11 +2390,13 @@ function openModal(movie) {
         ${fmtBadge}
         ${ratingHTML}
       </div>
+      ${mpaaHTML}
       <div class="modal-full-info" id="modal-full-info">
         ${genresHTML}
         ${overviewHTML}
         <div id="modal-credits">${buildCreditsHTML(movie)}</div>
       </div>
+      ${boxSetHTML}
       <div class="modal-divider"></div>
       <div class="modal-bottom-row">
         ${!isPublic ? `<button class="btn-watch-toggle ${isWatched ? 'watched' : ''}" data-movie-id="${escHtml(String(movie.id))}" onclick="handleWatchToggle(this)">${isWatched ? '✓ Marked as watched' : '○ Mark as watched'}</button>` : ''}
@@ -2752,6 +2906,19 @@ document.addEventListener('keydown', e => {
         <option value="DVD">DVD</option>
         <option value="VHS">VHS</option>
         <option value="Other">Other</option>
+      </select>
+    </div>
+    <div class="bulk-field">
+      <label>MPAA Rating</label>
+      <select id="bulk-mpaa">
+        <option value="">— don't change —</option>
+        <option value="G">G</option>
+        <option value="PG">PG</option>
+        <option value="PG-13">PG-13</option>
+        <option value="R">R</option>
+        <option value="NC-17X">NC-17/X</option>
+        <option value="Unrated">Unrated</option>
+        <option value="__clear__">Clear rating (No Data)</option>
       </select>
     </div>
     <div class="bulk-field">
