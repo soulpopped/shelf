@@ -2438,7 +2438,7 @@ function openModal(movie) {
     ? `<div class="modal-genres">${movie.genres.map(g => `<span class="genre-pill">${escHtml(g)}</span>`).join('')}</div>`
     : '';
   const overviewHTML = movie.overview
-    ? `<div class="modal-overview">${escHtml(movie.overview)}</div>`
+    ? `<div class="modal-overview">${escHtml(movie.overview).replace(/\n/g, '<br>')}</div>`
     : '';
 
   // MPAA static badge (if rating exists)
@@ -2984,7 +2984,7 @@ async function exportMovieImage() {
   ctx.fillStyle = BG;
   ctx.fillRect(0, 0, W, H);
 
-  // Subtle grain texture via random alpha dots
+  // Subtle grain texture
   ctx.save();
   for (let i = 0; i < 18000; i++) {
     ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.025})`;
@@ -2995,47 +2995,67 @@ async function exportMovieImage() {
   await document.fonts.ready;
 
   // ── POSTER ──
-  const posterSrc = movie.posterLg || movie.poster;
+  // Cache-bust the URL so the browser fetches fresh with CORS headers
+  // (TMDB images cached as plain <img> tags won't have CORS headers in cache)
+  const rawPoster = movie.posterLg || movie.poster;
+  const posterSrc = rawPoster ? rawPoster + (rawPoster.includes('?') ? '&' : '?') + 'cb=' + Date.now() : null;
   const POSTER_W = 800, POSTER_H = 1200;
   const POSTER_X = (W - POSTER_W) / 2, POSTER_Y = 60;
 
+  let posterLoaded = false;
   if (posterSrc) {
     await new Promise(resolve => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
-        // Clip to rounded rect
         ctx.save();
         exportRoundRect(ctx, POSTER_X, POSTER_Y, POSTER_W, POSTER_H, 18);
         ctx.clip();
         ctx.drawImage(img, POSTER_X, POSTER_Y, POSTER_W, POSTER_H);
         ctx.restore();
+        posterLoaded = true;
         resolve();
       };
       img.onerror = resolve;
       img.src = posterSrc;
     });
-  } else {
-    // Placeholder box
-    ctx.fillStyle = '#222';
-    exportRoundRect(ctx, POSTER_X, POSTER_Y, POSTER_W, POSTER_H, 18);
-    ctx.fill();
-    ctx.fillStyle = MUTED;
-    ctx.font = '48px "DM Sans", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('No Poster', W / 2, POSTER_Y + POSTER_H / 2);
   }
 
-  // Gradient overlay at bottom of poster
-  const grad = ctx.createLinearGradient(0, POSTER_Y + POSTER_H - 320, 0, POSTER_Y + POSTER_H);
+  if (!posterLoaded) {
+    // Stylised fallback: diagonal gradient + title initial
+    const pg1 = ctx.createLinearGradient(POSTER_X, POSTER_Y, POSTER_X + POSTER_W, POSTER_Y + POSTER_H);
+    pg1.addColorStop(0, '#1e1e1e');
+    pg1.addColorStop(1, '#0d0d0d');
+    ctx.fillStyle = pg1;
+    exportRoundRect(ctx, POSTER_X, POSTER_Y, POSTER_W, POSTER_H, 18);
+    ctx.fill();
+    // Subtle border
+    ctx.strokeStyle = '#2a2a2a';
+    ctx.lineWidth = 2;
+    exportRoundRect(ctx, POSTER_X, POSTER_Y, POSTER_W, POSTER_H, 18);
+    ctx.stroke();
+    // Large initial letter
+    const initial = (movie.title || '?')[0].toUpperCase();
+    ctx.font = `bold 380px "DM Sans", sans-serif`;
+    ctx.fillStyle = '#232323';
+    ctx.textAlign = 'center';
+    ctx.fillText(initial, W / 2, POSTER_Y + POSTER_H / 2 + 130);
+    // "No poster available" hint
+    ctx.font = `300 32px "DM Sans", sans-serif`;
+    ctx.fillStyle = '#404040';
+    ctx.fillText('no poster available', W / 2, POSTER_Y + POSTER_H - 60);
+  }
+
+  // Gradient overlay at bottom of poster (always, blends into bg)
+  const grad = ctx.createLinearGradient(0, POSTER_Y + POSTER_H - 280, 0, POSTER_Y + POSTER_H);
   grad.addColorStop(0, 'rgba(20,20,20,0)');
-  grad.addColorStop(1, 'rgba(20,20,20,0.92)');
+  grad.addColorStop(1, BG);
   ctx.fillStyle = grad;
   exportRoundRect(ctx, POSTER_X, POSTER_Y, POSTER_W, POSTER_H, 18);
   ctx.fill();
 
   // ── TEXT BLOCK below poster ──
-  const textY = POSTER_Y + POSTER_H + 48;
+  const textY = POSTER_Y + POSTER_H + 52;
   ctx.textAlign = 'center';
 
   // Title
@@ -3044,55 +3064,46 @@ async function exportMovieImage() {
   ctx.fillStyle = WHITE;
   const finalTitleY = exportWrapText(ctx, titleText, W / 2, textY, W - 120, 78);
 
-  // Year + runtime
+  // Meta: year · runtime · MPAA · rating (all on one line)
   const parts = [];
   if (movie.year && movie.year !== '—') parts.push(movie.year);
   if (movie.runtime) parts.push(`${movie.runtime} min`);
   if (movie.mpaaRating) parts.push(movie.mpaaRating);
+  if (movie.rating) parts.push(movie.rating.toFixed(1));
   const metaStr = parts.join('  ·  ');
 
   ctx.font = `400 38px "DM Sans", sans-serif`;
   ctx.fillStyle = MUTED;
-  ctx.fillText(metaStr, W / 2, finalTitleY + 60);
+  ctx.fillText(metaStr, W / 2, finalTitleY + 64);
 
-  // Rating bar (if exists)
-  let ratingLineY = finalTitleY + 130;
-  if (movie.rating) {
-    const stars = Math.round(movie.rating / 2); // 0–10 → 0–5
-    const starStr = '★'.repeat(stars) + '☆'.repeat(5 - stars);
-    ctx.font = `500 44px "DM Sans", sans-serif`;
-    ctx.fillStyle = GOLD;
-    ctx.fillText(starStr + `  ${movie.rating.toFixed(1)}`, W / 2, ratingLineY);
-    ratingLineY += 70;
-  }
+  let nextY = finalTitleY + 140;
 
   // Format badge
   if (movie.format) {
     const badgeText = movie.format.toUpperCase();
     ctx.font = `600 28px "DM Sans", sans-serif`;
-    const bw = ctx.measureText(badgeText).width + 32;
-    const bh = 44, bx = (W - bw) / 2, by = ratingLineY;
+    const bw = ctx.measureText(badgeText).width + 36;
+    const bh = 46, bx = (W - bw) / 2, by = nextY;
     ctx.strokeStyle = GOLD;
     ctx.lineWidth = 2;
     exportRoundRect(ctx, bx, by, bw, bh, 4);
     ctx.stroke();
     ctx.fillStyle = GOLD;
-    ctx.fillText(badgeText, W / 2, by + 30);
-    ratingLineY += 64;
+    ctx.fillText(badgeText, W / 2, by + 32);
+    nextY += bh + 44;
   }
 
   // Genres
   if (movie.genres?.length) {
     ctx.font = `300 32px "DM Sans", sans-serif`;
     ctx.fillStyle = MUTED;
-    ctx.fillText(movie.genres.slice(0, 3).join('  /  '), W / 2, ratingLineY + 10);
-    ratingLineY += 52;
+    ctx.fillText(movie.genres.slice(0, 3).join('  /  '), W / 2, nextY);
   }
 
   // Footer tag
   ctx.font = `300 26px "DM Sans", sans-serif`;
-  ctx.fillStyle = '#555';
-  ctx.fillText('SHELF', W / 2, H - 40);
+  ctx.fillStyle = '#444';
+  ctx.fillText('SHELF', W / 2, H - 44);
 
   // Download
   try {
@@ -3106,7 +3117,7 @@ async function exportMovieImage() {
       setTimeout(() => URL.revokeObjectURL(url), 5000);
     }, 'image/png');
   } catch(e) {
-    alert('Export failed — poster may not support cross-origin download. Try again or check the console.');
+    alert('Export failed — try again. If the issue persists, the poster may be blocking canvas export.');
     console.error(e);
   }
 }
