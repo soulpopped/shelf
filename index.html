@@ -2999,8 +2999,8 @@ async function exportMovieImage() {
   // (TMDB images cached as plain <img> tags won't have CORS headers in cache)
   const rawPoster = movie.posterLg || movie.poster;
   const posterSrc = rawPoster ? rawPoster + (rawPoster.includes('?') ? '&' : '?') + 'cb=' + Date.now() : null;
-  const POSTER_W = 800, POSTER_H = 1200;
-  const POSTER_X = (W - POSTER_W) / 2, POSTER_Y = 60;
+  const POSTER_Y = 140, POSTER_W = 940, POSTER_H = 1320;
+  const POSTER_X = (W - POSTER_W) / 2; // 70px each side
 
   let posterLoaded = false;
   if (posterSrc) {
@@ -3055,7 +3055,7 @@ async function exportMovieImage() {
   ctx.fill();
 
   // ── TEXT BLOCK below poster ──
-  const textY = POSTER_Y + POSTER_H + 52;
+  const textY = POSTER_Y + POSTER_H + 44;
   ctx.textAlign = 'center';
 
   // Title
@@ -3064,38 +3064,45 @@ async function exportMovieImage() {
   ctx.fillStyle = WHITE;
   const finalTitleY = exportWrapText(ctx, titleText, W / 2, textY, W - 120, 78);
 
-  // Meta: year · runtime · MPAA · rating (all on one line)
+  // Meta: year · runtime · director
   const parts = [];
   if (movie.year && movie.year !== '—') parts.push(movie.year);
   if (movie.runtime) parts.push(`${movie.runtime} min`);
-  if (movie.mpaaRating) parts.push(movie.mpaaRating);
-  if (movie.rating) parts.push(movie.rating.toFixed(1));
+  if (movie.director) parts.push(movie.director);
   const metaStr = parts.join('  ·  ');
 
-  ctx.font = `400 38px "DM Sans", sans-serif`;
+  ctx.font = `400 36px "DM Sans", sans-serif`;
   ctx.fillStyle = MUTED;
-  ctx.fillText(metaStr, W / 2, finalTitleY + 64);
+  ctx.fillText(metaStr, W / 2, finalTitleY + 56);
 
-  let nextY = finalTitleY + 140;
+  let nextY = finalTitleY + 116;
+
+  // Rating: ★ number (gold, above format badge)
+  if (movie.rating) {
+    ctx.font = `500 40px "DM Sans", sans-serif`;
+    ctx.fillStyle = GOLD;
+    ctx.fillText(`★ ${movie.rating.toFixed(1)}`, W / 2, nextY);
+    nextY += 58;
+  }
 
   // Format badge
   if (movie.format) {
     const badgeText = movie.format.toUpperCase();
     ctx.font = `600 28px "DM Sans", sans-serif`;
     const bw = ctx.measureText(badgeText).width + 36;
-    const bh = 46, bx = (W - bw) / 2, by = nextY;
+    const bh = 44, bx = (W - bw) / 2, by = nextY;
     ctx.strokeStyle = GOLD;
     ctx.lineWidth = 2;
     exportRoundRect(ctx, bx, by, bw, bh, 4);
     ctx.stroke();
     ctx.fillStyle = GOLD;
-    ctx.fillText(badgeText, W / 2, by + 32);
-    nextY += bh + 44;
+    ctx.fillText(badgeText, W / 2, by + 30);
+    nextY += bh + 36;
   }
 
   // Genres
   if (movie.genres?.length) {
-    ctx.font = `300 32px "DM Sans", sans-serif`;
+    ctx.font = `300 30px "DM Sans", sans-serif`;
     ctx.fillStyle = MUTED;
     ctx.fillText(movie.genres.slice(0, 3).join('  /  '), W / 2, nextY);
   }
