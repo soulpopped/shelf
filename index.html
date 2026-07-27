@@ -3064,28 +3064,28 @@ async function exportMovieImage() {
   ctx.fillStyle = WHITE;
   const finalTitleY = exportWrapText(ctx, titleText, W / 2, textY, W - 120, 78);
 
-  // Meta: year · runtime · director
-  const parts = [];
-  if (movie.year && movie.year !== '—') parts.push(movie.year);
-  if (movie.runtime) parts.push(`${movie.runtime} min`);
-  if (movie.director) parts.push(movie.director);
-  const metaStr = parts.join('  ·  ');
+  // Line 1: year · runtime · ★ rating
+  const metaParts = [];
+  if (movie.year && movie.year !== '—') metaParts.push(movie.year);
+  if (movie.runtime) metaParts.push(`${movie.runtime} min`);
+  if (movie.rating) metaParts.push(`★ ${movie.rating.toFixed(1)}`);
+  const metaStr = metaParts.join('  ·  ');
 
   ctx.font = `400 36px "DM Sans", sans-serif`;
   ctx.fillStyle = MUTED;
   ctx.fillText(metaStr, W / 2, finalTitleY + 56);
 
-  let nextY = finalTitleY + 116;
-
-  // Rating: ★ number (gold, above format badge)
-  if (movie.rating) {
-    ctx.font = `500 40px "DM Sans", sans-serif`;
-    ctx.fillStyle = GOLD;
-    ctx.fillText(`★ ${movie.rating.toFixed(1)}`, W / 2, nextY);
-    nextY += 58;
+  // Line 2: dir. Name
+  let nextY = finalTitleY + 108;
+  if (movie.director) {
+    ctx.font = `300 34px "DM Sans", sans-serif`;
+    ctx.fillStyle = MUTED;
+    ctx.fillText(`dir. ${movie.director}`, W / 2, nextY);
+    nextY += 56;
   }
 
-  // Format badge
+  // Gap then format badge
+  nextY += 24;
   if (movie.format) {
     const badgeText = movie.format.toUpperCase();
     ctx.font = `600 28px "DM Sans", sans-serif`;
@@ -3097,14 +3097,6 @@ async function exportMovieImage() {
     ctx.stroke();
     ctx.fillStyle = GOLD;
     ctx.fillText(badgeText, W / 2, by + 30);
-    nextY += bh + 36;
-  }
-
-  // Genres
-  if (movie.genres?.length) {
-    ctx.font = `300 30px "DM Sans", sans-serif`;
-    ctx.fillStyle = MUTED;
-    ctx.fillText(movie.genres.slice(0, 3).join('  /  '), W / 2, nextY);
   }
 
   // Footer tag
