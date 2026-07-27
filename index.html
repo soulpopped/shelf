@@ -262,6 +262,8 @@
   .btn-watch-toggle.watched:hover { background: rgba(74,222,128,0.18); }
   .modal-close { background: transparent; border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; padding: 10px 13px; border-radius: 2px; font-size: 0.9rem; transition: all 0.2s; line-height: 1; }
   .modal-close:hover { color: var(--text); border-color: var(--text-muted); }
+  .modal-export-btn { background: transparent; border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; padding: 10px 13px; border-radius: 2px; font-size: 0.9rem; transition: all 0.2s; line-height: 1; }
+  .modal-export-btn:hover { color: var(--text); border-color: var(--text-muted); }
   @media (min-width: 640px) {
     #modal-overlay { padding: 40px; }
     .modal { width: min(960px, calc(100vw - 80px)); display: flex; flex-direction: column; overflow: hidden; max-height: 90vh; }
@@ -553,6 +555,12 @@
     </div>
 
     <div class="fix-section">
+      <div class="fix-section-label">Edit description</div>
+      <textarea id="fix-description" rows="5" placeholder="Short films, notes, or any description…" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.82rem;padding:10px 12px;border-radius:2px;resize:vertical;outline:none;line-height:1.5;box-sizing:border-box"></textarea>
+      <button class="btn btn-accent" style="margin-top:12px;width:100%;padding:10px" onclick="saveDescription()">Save Description</button>
+    </div>
+
+    <div class="fix-section">
       <div class="fix-section-label">Custom cover art</div>
       <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:10px">Replaces the TMDB poster for films with missing or wrong art.</div>
       <div class="fix-row" style="margin-bottom:8px">
@@ -750,6 +758,13 @@
       </div>
 
       <div class="add-form-row" style="margin-bottom:12px">
+        <div class="add-form-group" style="flex:1">
+          <div class="add-form-label">Box set (disc location)</div>
+          <input type="text" id="manual-boxset-input" placeholder="e.g. Vinegar Syndrome May 2025">
+        </div>
+      </div>
+
+      <div class="add-form-row" style="margin-bottom:12px">
         <div class="add-form-group" style="flex:2">
           <div class="add-form-label">Series / Collection name</div>
           <input type="text" id="manual-series-name" placeholder="e.g. Something Weird Video">
@@ -781,6 +796,11 @@
       <div class="vhs-row">
         <input type="checkbox" id="manual-vhs-check">
         <label for="manual-vhs-check">📼 Also have this on VHS</label>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="add-form-label" style="margin-bottom:6px">Description (optional)</div>
+        <textarea id="manual-description" rows="4" placeholder="Short films, notes, or any description…" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.82rem;padding:10px 12px;border-radius:2px;resize:vertical;outline:none;line-height:1.5;box-sizing:border-box"></textarea>
       </div>
 
       <div id="manual-status" class="import-hint" style="margin-top:12px"></div>
@@ -1093,7 +1113,7 @@ function saveApiKey() {
 
 // ── TABS ───────────────────────────────────────────────────────────────────
 function switchTab(name, btn) {
-  if (name !== 'title') clearBoxSetMode();
+  if (name === 'clz') clearBoxSetMode();
   document.querySelectorAll('.import-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.import-section').forEach(s => s.classList.remove('active'));
   btn.classList.add('active');
@@ -1105,7 +1125,15 @@ function switchTab(name, btn) {
   } else if (name === 'title') {
     actionsDiv.innerHTML = '<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn btn-accent" id="add-film-btn" style="flex:2;min-width:160px;padding:16px;font-size:0.85rem;letter-spacing:0.15em" onclick="addSelectedFilm(false)" disabled>Add to Shelf →</button><button class="btn btn-ghost" id="add-boxset-btn" style="flex:3;min-width:220px;padding:16px;font-size:0.85rem;letter-spacing:0.15em;white-space:nowrap" onclick="addSelectedFilm(true)" disabled>Add &amp; Stay in Box Set →</button></div>';
   } else {
-    actionsDiv.innerHTML = '<button class="btn btn-accent" id="manual-add-btn" style="width:100%;padding:16px;font-size:0.85rem;letter-spacing:0.15em" onclick="saveManualFilm()">Add to Shelf →</button>';
+    // Manual tab — show two buttons if in box set mode, one otherwise
+    const inBoxSet = !!boxSetMode;
+    actionsDiv.innerHTML = '<button class="btn btn-accent" id="manual-add-btn" style="width:100%;padding:16px;font-size:0.85rem;letter-spacing:0.15em" onclick="saveManualFilm(false)">Add to Shelf →</button>'
+      + (inBoxSet ? '<button class="btn btn-ghost" id="manual-add-stay-btn" style="width:100%;padding:14px;font-size:0.85rem;letter-spacing:0.15em;margin-top:8px" onclick="saveManualFilm(true)">Add &amp; Stay in Box Set →</button>' : '');
+    // Pre-fill box set field from boxSetMode
+    if (inBoxSet) {
+      const bsInput = document.getElementById('manual-boxset-input');
+      if (bsInput && !bsInput.value) bsInput.value = boxSetMode;
+    }
   }
 }
 
@@ -1552,7 +1580,7 @@ function selectTMDBResult(result, el) {
 
 
 // ── MANUAL ENTRY ──────────────────────────────────────────────────────────────
-async function saveManualFilm() {
+async function saveManualFilm(stayInBoxSet = false) {
   const title = document.getElementById('manual-title').value.trim();
   if (!title) { alert('Title is required.'); return; }
 
@@ -1569,6 +1597,8 @@ async function saveManualFilm() {
   const seriesTotal = parseInt(document.getElementById('manual-series-total').value) || null;
   const posterUrl   = document.getElementById('manual-poster-url').value.trim() || null;
   const posterFile  = document.getElementById('manual-poster-file').files[0] || null;
+  const boxSet      = document.getElementById('manual-boxset-input').value.trim() || null;
+  const overview    = document.getElementById('manual-description').value.trim() || null;
 
   const statusEl = document.getElementById('manual-status');
   statusEl.textContent = '⟳ Saving…';
@@ -1597,7 +1627,7 @@ async function saveManualFilm() {
     title,
     originalTitle: title,
     year,
-    overview: null,
+    overview,
     poster,
     posterLg: poster,
     rating: null,
@@ -1615,7 +1645,7 @@ async function saveManualFilm() {
     collectionTotal: seriesTotal,
     format,
     hasVHS,
-    boxSet: null,
+    boxSet,
     label,
     dateAdded: new Date().toISOString(),
     notFound: false
@@ -1625,11 +1655,30 @@ async function saveManualFilm() {
     await sbSaveMovie(movie);
     movies.push(movie);
     statusEl.textContent = '';
-    showApp();
-    setTimeout(() => {
-      document.getElementById('search-input').value = movie.title;
-      applyFilters();
-    }, 300);
+
+    if (stayInBoxSet && boxSet) {
+      // Keep box set mode active, clear per-film fields, stay on manual tab
+      boxSetMode = boxSet;
+      document.getElementById('manual-title').value = '';
+      document.getElementById('manual-year').value = '';
+      document.getElementById('manual-director').value = '';
+      document.getElementById('manual-runtime').value = '';
+      document.getElementById('manual-genres').value = '';
+      document.getElementById('manual-series-name').value = '';
+      document.getElementById('manual-series-pos').value = '';
+      document.getElementById('manual-series-total').value = '';
+      document.getElementById('manual-poster-url').value = '';
+      document.getElementById('manual-description').value = '';
+      document.getElementById('manual-vhs-check').checked = false;
+      statusEl.textContent = `✓ "${title}" added. Ready for next film.`;
+      setTimeout(() => { statusEl.textContent = ''; }, 2500);
+    } else {
+      showApp();
+      setTimeout(() => {
+        document.getElementById('search-input').value = movie.title;
+        applyFilters();
+      }, 300);
+    }
   } catch(e) {
     statusEl.textContent = '⚠ Error saving — check connection.';
     console.error(e);
@@ -2420,6 +2469,7 @@ function openModal(movie) {
         <div class="modal-divider"></div>
         <div class="modal-bottom-row">
           ${!isPublic ? `<button class="btn-watch-toggle ${isWatched ? 'watched' : ''}" data-movie-id="${escHtml(String(movie.id))}" onclick="handleWatchToggle(this)">${isWatched ? '✓ Marked as watched' : '○ Mark as watched'}</button>` : ''}
+          <button class="modal-export-btn" onclick="exportMovieImage()" title="Export image">⬆</button>
           <button class="modal-close" onclick="closeModal()">✕</button>
         </div>
       </div>
@@ -2643,6 +2693,7 @@ function openFixModal(movieId) {
   document.getElementById('fix-label-select').value = movie.label || '';
   document.getElementById('fix-mpaa-select').value = movie.mpaaRating || '';
   document.getElementById('fix-vhs-check').checked = movie.hasVHS || false;
+  document.getElementById('fix-description').value = movie.overview || '';
   document.getElementById('fix-status').textContent = '';
   document.getElementById('fix-art-url').value = '';
   document.getElementById('fix-art-status').textContent = '';
@@ -2726,6 +2777,17 @@ async function saveDiscInfo() {
     await sbSaveMovie(movies[idx]);
     setFixStatus('✓ Disc info saved');
     buildFilterOptions(); applyFilters();
+    setTimeout(closeFixModal, 1000);
+  } catch(e) { setFixStatus('Error saving.', true); }
+}
+
+async function saveDescription() {
+  const idx = movies.findIndex(m => m.id === fixTargetId);
+  if (idx === -1) return;
+  movies[idx].overview = document.getElementById('fix-description').value.trim() || null;
+  try {
+    await sbSaveMovie(movies[idx]);
+    setFixStatus('✓ Description saved');
     setTimeout(closeFixModal, 1000);
   } catch(e) { setFixStatus('Error saving.', true); }
 }
@@ -2869,6 +2931,184 @@ function normalizeSearch(s) {
 function escHtml(str) {
   if (!str) return '';
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── IMAGE EXPORT ───────────────────────────────────────────────────────────────
+function exportRoundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function exportWrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = text.split(' ');
+  let line = '';
+  let lineY = y;
+  for (let i = 0; i < words.length; i++) {
+    const test = line + words[i] + ' ';
+    if (ctx.measureText(test).width > maxWidth && i > 0) {
+      ctx.fillText(line.trim(), x, lineY);
+      line = words[i] + ' ';
+      lineY += lineHeight;
+    } else {
+      line = test;
+    }
+  }
+  if (line.trim()) ctx.fillText(line.trim(), x, lineY);
+  return lineY;
+}
+
+async function exportMovieImage() {
+  const movie = movies.find(m => m.id === currentModalMovieId);
+  if (!movie) return;
+
+  const W = 1080, H = 1920;
+  const BG = '#141414';
+  const GOLD = '#e8c547';
+  const WHITE = '#ffffff';
+  const MUTED = '#888888';
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  ctx.fillStyle = BG;
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle grain texture via random alpha dots
+  ctx.save();
+  for (let i = 0; i < 18000; i++) {
+    ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.025})`;
+    ctx.fillRect(Math.random() * W, Math.random() * H, 1, 1);
+  }
+  ctx.restore();
+
+  await document.fonts.ready;
+
+  // ── POSTER ──
+  const posterSrc = movie.posterLg || movie.poster;
+  const POSTER_W = 800, POSTER_H = 1200;
+  const POSTER_X = (W - POSTER_W) / 2, POSTER_Y = 60;
+
+  if (posterSrc) {
+    await new Promise(resolve => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        // Clip to rounded rect
+        ctx.save();
+        exportRoundRect(ctx, POSTER_X, POSTER_Y, POSTER_W, POSTER_H, 18);
+        ctx.clip();
+        ctx.drawImage(img, POSTER_X, POSTER_Y, POSTER_W, POSTER_H);
+        ctx.restore();
+        resolve();
+      };
+      img.onerror = resolve;
+      img.src = posterSrc;
+    });
+  } else {
+    // Placeholder box
+    ctx.fillStyle = '#222';
+    exportRoundRect(ctx, POSTER_X, POSTER_Y, POSTER_W, POSTER_H, 18);
+    ctx.fill();
+    ctx.fillStyle = MUTED;
+    ctx.font = '48px "DM Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('No Poster', W / 2, POSTER_Y + POSTER_H / 2);
+  }
+
+  // Gradient overlay at bottom of poster
+  const grad = ctx.createLinearGradient(0, POSTER_Y + POSTER_H - 320, 0, POSTER_Y + POSTER_H);
+  grad.addColorStop(0, 'rgba(20,20,20,0)');
+  grad.addColorStop(1, 'rgba(20,20,20,0.92)');
+  ctx.fillStyle = grad;
+  exportRoundRect(ctx, POSTER_X, POSTER_Y, POSTER_W, POSTER_H, 18);
+  ctx.fill();
+
+  // ── TEXT BLOCK below poster ──
+  const textY = POSTER_Y + POSTER_H + 48;
+  ctx.textAlign = 'center';
+
+  // Title
+  const titleText = movie.displayTitle || movie.title;
+  ctx.font = `bold 64px "DM Sans", sans-serif`;
+  ctx.fillStyle = WHITE;
+  const finalTitleY = exportWrapText(ctx, titleText, W / 2, textY, W - 120, 78);
+
+  // Year + runtime
+  const parts = [];
+  if (movie.year && movie.year !== '—') parts.push(movie.year);
+  if (movie.runtime) parts.push(`${movie.runtime} min`);
+  if (movie.mpaaRating) parts.push(movie.mpaaRating);
+  const metaStr = parts.join('  ·  ');
+
+  ctx.font = `400 38px "DM Sans", sans-serif`;
+  ctx.fillStyle = MUTED;
+  ctx.fillText(metaStr, W / 2, finalTitleY + 60);
+
+  // Rating bar (if exists)
+  let ratingLineY = finalTitleY + 130;
+  if (movie.rating) {
+    const stars = Math.round(movie.rating / 2); // 0–10 → 0–5
+    const starStr = '★'.repeat(stars) + '☆'.repeat(5 - stars);
+    ctx.font = `500 44px "DM Sans", sans-serif`;
+    ctx.fillStyle = GOLD;
+    ctx.fillText(starStr + `  ${movie.rating.toFixed(1)}`, W / 2, ratingLineY);
+    ratingLineY += 70;
+  }
+
+  // Format badge
+  if (movie.format) {
+    const badgeText = movie.format.toUpperCase();
+    ctx.font = `600 28px "DM Sans", sans-serif`;
+    const bw = ctx.measureText(badgeText).width + 32;
+    const bh = 44, bx = (W - bw) / 2, by = ratingLineY;
+    ctx.strokeStyle = GOLD;
+    ctx.lineWidth = 2;
+    exportRoundRect(ctx, bx, by, bw, bh, 4);
+    ctx.stroke();
+    ctx.fillStyle = GOLD;
+    ctx.fillText(badgeText, W / 2, by + 30);
+    ratingLineY += 64;
+  }
+
+  // Genres
+  if (movie.genres?.length) {
+    ctx.font = `300 32px "DM Sans", sans-serif`;
+    ctx.fillStyle = MUTED;
+    ctx.fillText(movie.genres.slice(0, 3).join('  /  '), W / 2, ratingLineY + 10);
+    ratingLineY += 52;
+  }
+
+  // Footer tag
+  ctx.font = `300 26px "DM Sans", sans-serif`;
+  ctx.fillStyle = '#555';
+  ctx.fillText('SHELF', W / 2, H - 40);
+
+  // Download
+  try {
+    canvas.toBlob(blob => {
+      if (!blob) { alert('Export failed — could not generate image.'); return; }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${(movie.title || 'film').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.png`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }, 'image/png');
+  } catch(e) {
+    alert('Export failed — poster may not support cross-origin download. Try again or check the console.');
+    console.error(e);
+  }
 }
 
 document.addEventListener('keydown', e => {
