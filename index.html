@@ -136,7 +136,7 @@
   .toggle-btn { font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; background: var(--bg); border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; padding: 8px 14px; border-radius: 2px; transition: all 0.15s; font-family: 'DM Sans', sans-serif; font-weight: 400; }
   .toggle-btn.active { background: var(--accent); color: #0a0a0a; border-color: var(--accent); font-weight: 500; }
   .toggle-btn:not(.active):hover { border-color: var(--text-muted); color: var(--text); }
-  .filter-results { padding: 12px 48px; font-size: 0.75rem; color: var(--text-muted); font-style: italic; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .filter-results { padding: 12px 48px; font-size: 0.75rem; color: var(--text-muted); font-style: italic; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
   .boxset-pill { display: inline-flex; align-items: center; gap: 6px; background: rgba(230,200,80,0.12); border: 1px solid var(--accent); color: var(--accent); border-radius: 2px; padding: 2px 8px 2px 10px; font-size: 0.68rem; font-style: normal; letter-spacing: 0.06em; margin-left: 10px; }
   .boxset-pill button { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.8rem; line-height: 1; padding: 0; opacity: 0.7; }
   .boxset-pill button:hover { opacity: 1; }
@@ -219,9 +219,11 @@
   .vhs-note { font-size: 0.62rem; color: var(--text-dim); font-style: italic; }
   /* Responsive button text */
   .btn-short { display: none; }
-  /* Filter panel — transparent on desktop so children are direct flex items of filter-bar */
+  /* Desktop: search in header row; filter panel collapsed behind ▾ Filters button */
   #filter-toggle { display: none; }
-  #filter-panel { display: contents; }
+  #filter-toggle-desktop { display: none; }
+  #filter-panel { display: none; }
+  #filter-panel.open { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
   .label-logo { height: 16px; width: auto; vertical-align: middle; opacity: 0.88; display: inline-block; }
   .label-logo-modal { height: 22px; width: auto; vertical-align: middle; opacity: 0.92; display: inline-block; }
   .series-link { background: none; border: none; color: var(--accent); cursor: pointer; font-family: inherit; font-size: inherit; padding: 0; text-decoration: underline; text-decoration-color: rgba(232,197,71,0.4); text-underline-offset: 3px; transition: text-decoration-color 0.15s; }
@@ -398,6 +400,17 @@
     .modal-shelf-footer { display: block !important; text-align: center; font-size: 1.05rem !important; }
   }
 
+  /* DESKTOP — search in header, collapsible filter panel */
+  @media (min-width: 769px) {
+    input.header-search { flex: 0 0 240px; background: var(--surface); padding: 8px 14px; }
+    .header-stats { flex: 1; justify-content: center; }
+    #filter-bar { padding: 0; border: none; }
+    #filter-bar.panel-open { padding: 16px 48px 20px; border-bottom: 1px solid var(--border); }
+    #filter-panel.open { width: 100%; }
+    #filter-toggle-desktop { display: flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 0.72rem; }
+    #filter-toggle-desktop .filter-dot { color: var(--accent); font-size: 0.55rem; line-height: 1; }
+  }
+
   /* MOBILE */
   @media (max-width: 768px) {
     header { padding: max(12px, env(safe-area-inset-top)) 16px 12px; flex-wrap: wrap; gap: 8px; position: fixed; top: 0; left: 0; right: 0; }
@@ -414,9 +427,10 @@
     .btn-long { display: none; }
     .btn-short { display: inline; }
     .logo { font-size: 1.8rem; }
-    /* Filter bar: compact, search always visible */
+    /* Search moves to header row 3 on mobile */
+    .header-search { order: 3; width: 100%; flex: 0 0 100%; font-size: 16px; padding: 8px 12px; }
+    #filter-toggle-desktop { display: none !important; }
     #filter-bar { padding: 10px 16px; gap: 8px; }
-    .filter-search { min-width: 100%; max-width: 100%; }
     /* Filter toggle button */
     #filter-toggle { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 9px 12px; font-size: 0.7rem; }
     #filter-toggle .filter-dot { color: var(--accent); font-size: 0.55rem; line-height: 1; }
@@ -619,6 +633,7 @@
 <!-- HEADER -->
 <header id="main-header" style="display:none">
   <div class="logo" onclick="resetFilters()" title="Reset filters">Shelf<span>Your Collection</span></div>
+  <input type="text" id="search-input" class="header-search" placeholder="Title, director, actor…" oninput="searchReset()">
   <div class="header-stats">
     <div class="stat"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Films</div></div>
     <div class="stat"><div class="stat-num" id="stat-watched">0</div><div class="stat-label">Watched</div></div>
@@ -628,7 +643,7 @@
     <button class="btn btn-ghost public-hidden" onclick="syncFromCloud()" title="Sync from cloud" style="padding:10px 12px">⟳</button>
     <button class="btn btn-ghost public-hidden" id="select-btn" onclick="toggleSelectionMode()" style="display:none">☰ Select</button>
     <button class="btn btn-ghost public-hidden" onclick="showImport()">+ <span class="btn-long">Add Film</span><span class="btn-short">Add</span></button>
-    <button class="btn btn-random" onclick="pickRandom()">⚄ <span class="btn-long">Pick One For Me</span><span class="btn-short">Pick One</span></button>
+    <button class="btn btn-random" onclick="pickRandom()">⚄ <span class="btn-long">Pick One</span><span class="btn-short">Pick One</span></button>
   </div>
 </header>
 
@@ -854,12 +869,8 @@
 <!-- MAIN APP -->
 <div id="app">
   <div id="filter-bar">
-    <div class="filter-group filter-search">
-      <div class="filter-label">Search</div>
-      <input type="text" id="search-input" placeholder="Title, director, actor…" oninput="searchReset()">
-    </div>
     <button id="filter-toggle" class="btn btn-ghost" onclick="toggleFilterPanel()">
-      <span id="filter-chevron">▾</span> Filters <span class="filter-dot" id="filter-dot" style="display:none">●</span>
+      <span class="filter-chevron">▾</span> Filters <span class="filter-dot" style="display:none">●</span>
     </button>
     <div id="filter-panel">
     <div class="filter-group">
@@ -930,6 +941,9 @@
   </div>
 
   <div class="filter-results">
+    <button id="filter-toggle-desktop" class="btn btn-ghost" onclick="toggleFilterPanel()">
+      <span class="filter-chevron">▾</span> Filters <span class="filter-dot" style="display:none">●</span>
+    </button>
     <span id="results-count">Showing all films</span>
     <div class="filter-toggles">
       <button class="toggle-btn active" data-status="all" onclick="setStatusFilter(this)">All</button>
@@ -1800,14 +1814,13 @@ async function addSelectedFilm(stayInBoxSet = false) {
 
 function toggleFilterPanel() {
   const panel = document.getElementById('filter-panel');
-  const chevron = document.getElementById('filter-chevron');
+  const bar = document.getElementById('filter-bar');
   const isOpen = panel.classList.toggle('open');
-  if (chevron) chevron.textContent = isOpen ? '▴' : '▾';
+  if (bar) bar.classList.toggle('panel-open', isOpen);
+  document.querySelectorAll('.filter-chevron').forEach(c => c.textContent = isOpen ? '▴' : '▾');
 }
 
 function updateFilterDot() {
-  const dot = document.getElementById('filter-dot');
-  if (!dot) return;
   const genre = document.getElementById('filter-genre').value;
   const decade = document.getElementById('filter-decade').value;
   const format = document.getElementById('filter-format').value;
@@ -1816,7 +1829,7 @@ function updateFilterDot() {
   const runtime = parseInt(document.getElementById('filter-runtime').value) || 300;
   const hasActive = genre || decade || format || label || collection || runtime < 300
     || mpaaFilterSet.size > 0 || currentStatusFilter !== 'all';
-  dot.style.display = hasActive ? 'inline' : 'none';
+  document.querySelectorAll('.filter-dot').forEach(d => d.style.display = hasActive ? 'inline' : 'none');
 }
 
 function updateHeaderHeight() {
@@ -2338,6 +2351,8 @@ function sortMovies() {
 }
 
 function resetFilters() {
+  const panel = document.getElementById('filter-panel');
+  if (panel) { panel.classList.remove('open'); document.getElementById('filter-bar').classList.remove('panel-open'); document.querySelectorAll('.filter-chevron').forEach(c => c.textContent = '▾'); }
   document.getElementById('search-input').value = '';
   document.getElementById('filter-genre').value = '';
   document.getElementById('filter-decade').value = '';
