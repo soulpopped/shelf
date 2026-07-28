@@ -400,18 +400,18 @@
     .modal-shelf-footer { display: block !important; text-align: center; font-size: 1.05rem !important; }
   }
 
-  /* DESKTOP — search in header, collapsible filter panel, centered stats + status */
+  /* DESKTOP — search in filter row, collapsible panel, centered stats + status */
   @media (min-width: 769px) {
-    /* Header: stats pinned to exact center via absolute; logo+search left, actions right */
-    header { position: relative; justify-content: flex-start; }
-    input.header-search { flex: 0 0 240px; background: var(--surface); padding: 8px 14px; margin-left: 24px; }
+    /* Header: search hidden, stats pinned to exact center, logo left / actions right */
+    header { position: relative; }
+    input.header-search { display: none; }
     .header-stats { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; }
-    .header-actions { margin-left: auto; }
-    /* Filter results: status toggles pinned to exact same center as stats above */
+    /* Filter results: single utility row with search, toggle, count, centered status, sort */
     .filter-results { position: relative; }
     .fr-left { display: flex; align-items: center; gap: 16px; }
+    input.filter-search-input { flex: 0 0 300px; background: var(--surface); padding: 8px 14px; }
     .filter-toggles { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
-    /* Filter bar */
+    /* Filter bar: invisible when collapsed, shows panel when open */
     #filter-bar { padding: 0; border: none; }
     #filter-bar.panel-open { padding: 16px 48px 20px; border-bottom: 1px solid var(--border); }
     #filter-panel.open { width: 100%; }
@@ -438,6 +438,7 @@
     /* Search moves to header row 3 on mobile */
     .header-search { order: 3; width: 100%; flex: 0 0 100%; font-size: 16px; padding: 8px 12px; }
     #filter-toggle-desktop { display: none !important; }
+    #search-input-desktop { display: none !important; }
     #filter-bar { padding: 10px 16px; gap: 8px; }
     /* Filter toggle button */
     #filter-toggle { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 9px 12px; font-size: 0.7rem; }
@@ -950,6 +951,7 @@
 
   <div class="filter-results">
     <div class="fr-left">
+      <input type="text" id="search-input-desktop" class="filter-search-input" placeholder="Title, director, actor…" oninput="desktopSearchInput()">
       <button id="filter-toggle-desktop" class="btn btn-ghost" onclick="toggleFilterPanel()">
         <span class="filter-chevron">▾</span> Filters <span class="filter-dot" style="display:none">●</span>
       </button>
@@ -1723,7 +1725,7 @@ async function saveManualFilm(stayInBoxSet = false) {
     } else {
       showApp();
       setTimeout(() => {
-        document.getElementById('search-input').value = movie.title;
+        setSearchVal(movie.title);
         applyFilters();
       }, 300);
     }
@@ -1810,7 +1812,7 @@ async function addSelectedFilm(stayInBoxSet = false) {
       boxSetMode = null;
       showApp();
       setTimeout(() => {
-        document.getElementById('search-input').value = movie.title;
+        setSearchVal(movie.title);
         applyFilters();
       }, 300);
     }
@@ -1821,6 +1823,18 @@ async function addSelectedFilm(stayInBoxSet = false) {
   }
 }
 
+
+// Desktop search syncs to #search-input (source of truth for all filter logic)
+function desktopSearchInput() {
+  const v = document.getElementById('search-input-desktop').value;
+  document.getElementById('search-input').value = v;
+  searchReset();
+}
+function setSearchVal(v) {
+  document.getElementById('search-input').value = v;
+  const d = document.getElementById('search-input-desktop');
+  if (d) d.value = v;
+}
 
 function toggleFilterPanel() {
   const panel = document.getElementById('filter-panel');
@@ -2296,7 +2310,7 @@ function applyFilters() {
 
 function filterByBoxSet(name) {
   currentBoxSetFilter = name;
-  document.getElementById('search-input').value = '';
+  setSearchVal('');
   closeModal();
   applyFilters();
 }
@@ -2363,7 +2377,7 @@ function sortMovies() {
 function resetFilters() {
   const panel = document.getElementById('filter-panel');
   if (panel) { panel.classList.remove('open'); document.getElementById('filter-bar').classList.remove('panel-open'); document.querySelectorAll('.filter-chevron').forEach(c => c.textContent = '▾'); }
-  document.getElementById('search-input').value = '';
+  setSearchVal('');
   document.getElementById('filter-genre').value = '';
   document.getElementById('filter-decade').value = '';
   document.getElementById('filter-format').value = '';
@@ -2571,7 +2585,7 @@ function closeModal() {
 }
 function searchByPerson(name) {
   closeModal();
-  document.getElementById('search-input').value = name;
+  setSearchVal(name);
   applyFilters();
 }
 
