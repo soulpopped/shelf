@@ -129,7 +129,7 @@
   /* FILTER BAR */
   #filter-bar { padding: 20px 48px; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; background: var(--surface); }
   .filter-group { display: flex; flex-direction: column; gap: 6px; }
-  .filter-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.18em; color: var(--text-muted); }
+  .filter-label { display: none; }
   .filter-search { flex: 1; min-width: 220px; max-width: 320px; }
   .filter-search input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-size: 16px; padding: 8px 12px; border-radius: 2px; }
   .filter-toggles { display: flex; gap: 8px; align-items: flex-end; }
@@ -425,7 +425,6 @@
     #filter-panel.open { display: flex; }
     #filter-panel .filter-group { min-width: calc(50% - 3px); flex: 1 1 calc(50% - 3px); }
     #filter-panel .range-wrap { min-width: 100%; flex: 1 1 100%; }
-    #filter-panel .filter-group:last-child { min-width: 100%; flex: 1 1 100%; }
     select { min-width: unset; width: 100%; }
     .filter-results { padding: 10px 16px; flex-direction: column; align-items: flex-start; gap: 8px; }
     #grid { padding: 16px; gap: 12px; --card-w: 140px; }
@@ -922,14 +921,6 @@
         <span class="range-val" id="runtime-val">Any</span>
       </div>
     </div>
-    <div class="filter-group">
-      <div class="filter-label">Status</div>
-      <div class="filter-toggles">
-        <button class="toggle-btn active" data-status="all" onclick="setStatusFilter(this)">All</button>
-        <button class="toggle-btn" data-status="unwatched" onclick="setStatusFilter(this)">Unwatched</button>
-        <button class="toggle-btn" data-status="watched" onclick="setStatusFilter(this)">Watched</button>
-      </div>
-    </div>
     </div><!-- /#filter-panel -->
   </div>
 
@@ -940,6 +931,11 @@
 
   <div class="filter-results">
     <span id="results-count">Showing all films</span>
+    <div class="filter-toggles">
+      <button class="toggle-btn active" data-status="all" onclick="setStatusFilter(this)">All</button>
+      <button class="toggle-btn" data-status="unwatched" onclick="setStatusFilter(this)">Unwatched</button>
+      <button class="toggle-btn" data-status="watched" onclick="setStatusFilter(this)">Watched</button>
+    </div>
     <div class="sort-bar">
       Sort:
       <button class="sort-btn active" data-sort="title" onclick="setSort(this)">Title</button>
