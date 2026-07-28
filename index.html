@@ -2460,6 +2460,8 @@ function openModal(movie) {
           ${fmtBadge}
           ${ratingHTML}
           ${mpaaRatingBadge}
+          ${labelLogoHTML(movie.label, 'modal')}
+          ${movie.hasVHS ? `<span class="vhs-note">📼 Also on VHS</span>` : ''}
         </div>
         <div class="modal-full-info" id="modal-full-info">
           ${genresHTML}
@@ -3084,19 +3086,58 @@ async function exportMovieImage() {
     nextY += 56;
   }
 
-  // Gap then format badge
+  // Gap then format badge (+ optional label logo to the right)
   nextY += 24;
   if (movie.format) {
     const badgeText = movie.format.toUpperCase();
     ctx.font = `600 28px "DM Sans", sans-serif`;
     const bw = ctx.measureText(badgeText).width + 36;
-    const bh = 44, bx = (W - bw) / 2, by = nextY;
-    ctx.strokeStyle = GOLD;
-    ctx.lineWidth = 2;
-    exportRoundRect(ctx, bx, by, bw, bh, 4);
-    ctx.stroke();
-    ctx.fillStyle = GOLD;
-    ctx.fillText(badgeText, W / 2, by + 30);
+    const bh = 44;
+    const labelFile = movie.label && LABEL_LOGOS[movie.label];
+
+    const drawBadgeAndLabel = (labelImg) => {
+      if (labelImg) {
+        const lh = bh;
+        const lw = Math.round(labelImg.naturalWidth * (lh / labelImg.naturalHeight));
+        const GAP = 22;
+        const totalW = bw + GAP + lw;
+        const startX = (W - totalW) / 2;
+        // Format badge (left of pair)
+        ctx.textAlign = 'center';
+        ctx.strokeStyle = GOLD;
+        ctx.lineWidth = 2;
+        exportRoundRect(ctx, startX, nextY, bw, bh, 4);
+        ctx.stroke();
+        ctx.fillStyle = GOLD;
+        ctx.font = `600 28px "DM Sans", sans-serif`;
+        ctx.fillText(badgeText, startX + bw / 2, nextY + 30);
+        // Label logo (right of pair, vertically centred to badge)
+        ctx.drawImage(labelImg, startX + bw + GAP, nextY, lw, lh);
+      } else {
+        // No label (or failed to load) — badge centred
+        const bx = (W - bw) / 2;
+        ctx.textAlign = 'center';
+        ctx.strokeStyle = GOLD;
+        ctx.lineWidth = 2;
+        exportRoundRect(ctx, bx, nextY, bw, bh, 4);
+        ctx.stroke();
+        ctx.fillStyle = GOLD;
+        ctx.font = `600 28px "DM Sans", sans-serif`;
+        ctx.fillText(badgeText, W / 2, nextY + 30);
+      }
+    };
+
+    if (labelFile) {
+      await new Promise(resolve => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload  = () => { drawBadgeAndLabel(img);  resolve(); };
+        img.onerror = () => { drawBadgeAndLabel(null); resolve(); };
+        img.src = `${SB_URL}/storage/v1/object/public/shelf-posters/${labelFile}?cb=${Date.now()}`;
+      });
+    } else {
+      drawBadgeAndLabel(null);
+    }
   }
 
   // Footer tag
