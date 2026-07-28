@@ -402,10 +402,15 @@
   @media (max-width: 768px) {
     header { padding: max(12px, env(safe-area-inset-top)) 16px 12px; flex-wrap: wrap; gap: 8px; position: fixed; top: 0; left: 0; right: 0; }
     #app.active { padding-top: var(--header-height, 130px); }
-    .header-stats { gap: 16px; order: 3; width: 100%; justify-content: center; padding-top: 6px; border-top: 1px solid var(--border); }
+    /* Stats: inline with logo on row 1, slightly smaller */
+    .header-stats { gap: 12px; order: 0; width: auto; padding-top: 0; border-top: none; }
+    .stat-num { font-size: 1.44rem; }
+    .stat-label { font-size: 0.58rem; }
     /* Buttons: full-width row below logo, all equal width */
     .header-actions { order: 2; width: 100%; flex-wrap: nowrap; gap: 6px; }
     .header-actions .btn { flex: 1; justify-content: center; padding: 10px 6px; font-size: 0.7rem; }
+    /* Refresh: narrower fixed width so it doesn't eat button space */
+    .header-actions .btn:first-child { flex: 0 0 38px; padding: 10px 0; }
     .btn-long { display: none; }
     .btn-short { display: inline; }
     .logo { font-size: 1.8rem; }
@@ -624,7 +629,7 @@
     <button class="btn btn-ghost public-hidden" onclick="syncFromCloud()" title="Sync from cloud" style="padding:10px 12px">⟳</button>
     <button class="btn btn-ghost public-hidden" id="select-btn" onclick="toggleSelectionMode()" style="display:none">☰ Select</button>
     <button class="btn btn-ghost public-hidden" onclick="showImport()">+ <span class="btn-long">Add Film</span><span class="btn-short">Add</span></button>
-    <button class="btn btn-random" onclick="pickRandom()">⚄ <span class="btn-long">Pick One For Me</span><span class="btn-short">Pick</span></button>
+    <button class="btn btn-random" onclick="pickRandom()">⚄ <span class="btn-long">Pick One For Me</span><span class="btn-short">Pick One</span></button>
   </div>
 </header>
 
